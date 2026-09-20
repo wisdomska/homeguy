@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EMPTY_FILTERS, matching, passes, splitByBudget } from '../filters';
+import { EMPTY_FILTERS, matching, passes, sortResults, splitByBudget } from '../filters';
 import { assessCoverage, findBlockingFilter } from '../coverage';
 import { nearMisses } from '../nearmiss';
 import { parseFilters, toQuery, searchHref } from '../url';
@@ -155,5 +155,56 @@ describe('the thin threshold', () => {
     const verdict = assessCoverage(all, filters, matched);
     expect(verdict.zero).toBe(false);
     expect(verdict.thin).toBe(true);
+  });
+});
+
+describe('result order', () => {
+  it('puts the towns the user asked for before hub near-misses', () => {
+    const all = clustersFor(['ahodwo']);
+    const sorted = sortResults(matching(all, { ...EMPTY_FILTERS, towns: ['ahodwo'] }), [
+      'ahodwo',
+    ]);
+    const firstAway = sorted.findIndex((c) => c.town.slug !== 'ahodwo');
+    const lastLocal = sorted.map((c) => c.town.slug).lastIndexOf('ahodwo');
+    // Every Ahodwo result comes before the first Bantama or Nhyiaeso one.
+    expect(firstAway).toBeGreaterThan(lastLocal);
+  });
+
+  it('is newest first within the chosen towns, as the label says', () => {
+    const all = clustersFor(['ahodwo']);
+    const sorted = sortResults(matching(all, { ...EMPTY_FILTERS, towns: ['ahodwo'] }), [
+      'ahodwo',
+    ]).filter((c) => c.town.slug === 'ahodwo');
+    for (let i = 1; i < sorted.length; i += 1) {
+      const prev = sorted[i - 1];
+      const cur = sorted[i];
+      if (prev === undefined || cur === undefined) continue;
+      expect(cur.seenDaysAgo).toBeGreaterThanOrEqual(prev.seenDaysAgo);
+    }
+  });
+
+  it('is deterministic, so a reload reproduces the same page', () => {
+    const f = { ...EMPTY_FILTERS, towns: ['ahodwo'] };
+    const a = sortResults(matching(clustersFor(f.towns), f), f.towns).map((c) => c.id);
+    const b = sortResults(matching(clustersFor(f.towns), f), f.towns).map((c) => c.id);
+    expect(a).toEqual(b);
+  });
+
+  it('still surfaces the no-advance cluster when it is asked for', () => {
+    const f = { ...EMPTY_FILTERS, towns: ['ahodwo'], includeNotStated: true };
+    const sorted = sortResults(matching(clustersFor(f.towns), f), f.towns);
+    const index = sorted.findIndex((c) => c.id === 'a5');
+    // Present, and in the chosen town's block rather than exiled to the
+    // near-misses. Its exact position is a freshness question — a5 was last
+    // verified 6 days ago and Ahodwo holds 214 clusters, so it sits behind
+    // the ones seen more recently, which is what "Newest first" means.
+    expect(index).toBeGreaterThanOrEqual(0);
+    expect(sorted[index]?.town.slug).toBe('ahodwo');
+    expect(sorted[index]?.totalToMoveInMin).toBeNull();
+
+    // And the state itself reaches the first page, because roughly one
+    // cluster in eight states no advance.
+    const firstPage = sorted.slice(0, 20).filter((c) => c.advanceMonthsMin === null);
+    expect(firstPage.length).toBeGreaterThan(0);
   });
 });

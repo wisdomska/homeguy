@@ -46,6 +46,20 @@ a:hover {
   color: var(--link-hover);
 }
 
+/*
+ * A link sitting inside a block of prose has to be distinguishable by
+ * something other than its colour, or a reader who does not see clay as
+ * different from ink cannot find it. Chips, buttons, cards and nav items
+ * are their own shapes and do not need this.
+ */
+p a,
+li a:not([class]),
+nav[aria-label='Breadcrumb'] a,
+dd a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 button,
 input,
 select,

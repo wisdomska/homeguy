@@ -3,7 +3,7 @@ import { RESULTS } from '@/core/copy';
 import { unitTypeLabel } from '@/core/copy';
 import { formatMoney } from '@/core/money';
 import { parseFilters, searchHref, toQuery } from '@/core/url';
-import { activeFilterCount, matching, splitByBudget } from '@/core/filters';
+import { activeFilterCount, matching, sortResults, splitByBudget } from '@/core/filters';
 import { assessCoverage, findBlockingFilter, nearbyCoverage } from '@/core/coverage';
 import { nearMisses } from '@/core/nearmiss';
 import { buildCard } from '@/core/cardModel';
@@ -32,7 +32,7 @@ export default async function SearchPage({
   const page = Number.isInteger(pageParam) && pageParam > 0 ? pageParam : 1;
 
   const all = clustersFor(filters.towns);
-  const matched = matching(all, filters);
+  const matched = sortResults(matching(all, filters), filters.towns);
   const { affordable, over } = splitByBudget(matched, filters.lumpMax);
   const verdict = assessCoverage(all, filters, matched);
 

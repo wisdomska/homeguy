@@ -6,6 +6,7 @@ import { buildCard } from '@/core/cardModel';
 import { formatMoney } from '@/core/money';
 import { unitTypeLabel } from '@/core/copy';
 import { THIN_TOWN_THRESHOLD } from '@/core/coverage';
+import { sortResults } from '@/core/filters';
 import {
   REGION_BY_SLUG,
   TOWNS,
@@ -57,7 +58,7 @@ export default async function TownPage({
   const r = REGION_BY_SLUG.get(region);
   if (t === undefined || r === undefined || t.regionId !== region) notFound();
 
-  const all = clustersInTown(town);
+  const all = sortResults(clustersInTown(town), [town]);
   const count = all.length;
   const shown = all.slice(0, 12);
 

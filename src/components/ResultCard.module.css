@@ -180,7 +180,7 @@
 .place {
   font-size: var(--text-caption);
   line-height: 1.45;
-  color: var(--ink-secondary);
+  color: var(--ink-tertiary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

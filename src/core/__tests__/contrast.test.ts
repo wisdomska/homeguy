@@ -160,3 +160,30 @@ describe('white on clay appears nowhere', () => {
     expect(tokens).toContain('--button-primary-bg: var(--clay-500)');
   });
 });
+
+describe('the pairings axe caught, now fixed', () => {
+  const DUST_100 = '#F6F1EB';
+  const DUST_400 = '#A89D95';
+  const DUST_700 = '#4A4440';
+  const WHITE_CARD = '#FFFFFF';
+
+  it('an empty chip is readable', () => {
+    // dust-400 on dust-100 was 2.36:1 and failed.
+    expect(contrast(DUST_400, DUST_100)).toBeLessThan(4.5);
+    // dust-600 is what it uses now.
+    expect(contrast(DUST_600, DUST_100)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('"not stated" passes AA at caption size', () => {
+    // The design's dust-500 is AA for large text only, and every place it
+    // appears is a 13px caption.
+    expect(contrast(DUST_500, WHITE_CARD)).toBeLessThan(4.5);
+    expect(contrast(DUST_600, WHITE_CARD)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('a stated place line stays distinguishable from a not-stated one', () => {
+    // dust-700 for stated, dust-600 for not stated. Both pass; they differ.
+    expect(contrast(DUST_700, WHITE_CARD)).toBeGreaterThanOrEqual(4.5);
+    expect(DUST_700).not.toBe(DUST_600);
+  });
+});

@@ -56,7 +56,17 @@
   --ink: var(--dust-900);
   --ink-secondary: var(--dust-600);
   --ink-tertiary: var(--dust-700);
-  --ink-not-stated: var(--dust-500);
+  /*
+   * Not-stated text.
+   *
+   * The design uses dust-500 here, and Brand Guide §7 rates it 3.81:1 —
+   * which is AA for LARGE text only. The places it actually appears are
+   * 13px captions, so axe was right to fail it. dust-600 is 5.74:1 and
+   * passes at any size. The distinction from stated text is kept by
+   * darkening the stated line to dust-700 rather than by lightening this
+   * one below the floor.
+   */
+  --ink-not-stated: var(--dust-600);
   --link: var(--clay-700);
   --link-hover: var(--clay-800);
   --hairline: var(--dust-200);

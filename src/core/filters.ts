@@ -138,6 +138,31 @@ export function splitByBudget(
   return { affordable, over };
 }
 
+/**
+ * Result order.
+ *
+ * The screen says "Newest first", so it is newest first — but the towns the
+ * user actually asked for come before the ones pulled in through a hub. A
+ * search for Ahodwo that opens on twenty Bantama results has answered a
+ * question nobody asked, however fresh those results are.
+ *
+ * Near-misses from a hub town still appear, still in freshness order, and
+ * still carrying the "· 4.2km away" pill that says where they are.
+ */
+export function sortResults(clusters: ClusterView[], townSlugs: string[]): ClusterView[] {
+  const chosen = new Set(townSlugs);
+  return [...clusters].sort((a, b) => {
+    if (chosen.size > 0) {
+      const aAway = chosen.has(a.town.slug) ? 0 : 1;
+      const bAway = chosen.has(b.town.slug) ? 0 : 1;
+      if (aAway !== bAway) return aAway - bAway;
+    }
+    if (a.seenDaysAgo !== b.seenDaysAgo) return a.seenDaysAgo - b.seenDaysAgo;
+    // Stable and deterministic, so a reload reproduces the same page.
+    return a.id.localeCompare(b.id);
+  });
+}
+
 export function activeFilterCount(f: Filters): number {
   let n = 0;
   if (f.types.length > 0) n += f.types.length;

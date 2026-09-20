@@ -125,11 +125,17 @@
   background: var(--surface-raised);
 }
 
+/*
+ * A filter or region with nothing behind it. It reads as unavailable
+ * without dropping below the contrast floor — dust-400 on dust-100 is
+ * 2.36:1 and fails; dust-600 is 5.23:1. The "unavailable" signal is the
+ * pale border and the count of 0 beside it, not a faded label.
+ */
 .chipEmpty {
   composes: chip;
   border: 1px solid var(--dust-300);
   background: var(--surface-raised);
-  color: var(--dust-400);
+  color: var(--ink-secondary);
   cursor: default;
 }
 
