@@ -1,0 +1,163 @@
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  background: var(--page);
+  border-bottom: 1px solid var(--hairline);
+}
+
+@media (min-width: 768px) {
+  .bar {
+    top: 64px;
+  }
+}
+
+.barInner {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+@media (min-width: 768px) {
+  .barInner {
+    padding: var(--space-3) var(--space-6);
+  }
+}
+@media (min-width: 1024px) {
+  .barInner {
+    padding: var(--space-3) var(--space-8);
+  }
+}
+
+.chipRail {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: var(--target);
+  padding: 0 var(--space-4);
+  border-top: 1px solid var(--hairline);
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.railChip {
+  flex: none;
+  min-height: 28px;
+  height: 28px;
+  padding: 0 10px;
+}
+
+/* ---- the sheet ------------------------------------------------------- */
+
+.sheet {
+  width: 100%;
+  max-width: 560px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-panel);
+  padding: 0;
+  background: var(--page);
+  color: var(--ink);
+  max-height: 88vh;
+  margin: auto;
+}
+
+.sheet::backdrop {
+  background: rgb(20 17 15 / 45%);
+}
+
+/* On a phone it is a sheet, not a centred box. */
+@media (max-width: 767px) {
+  .sheet {
+    max-width: 100%;
+    width: 100%;
+    margin: auto auto 0;
+    border-radius: var(--radius-panel) var(--radius-panel) 0 0;
+    animation: hgSheet 0.24s ease;
+  }
+}
+
+.sheetHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--hairline);
+  position: sticky;
+  top: 0;
+  background: var(--page);
+}
+
+.close {
+  width: var(--target);
+  height: var(--target);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--ink);
+}
+
+.sheetBody {
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  overflow-y: auto;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--target);
+  cursor: pointer;
+}
+
+.check input {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  accent-color: var(--clay-500);
+}
+
+.checkLabel {
+  flex: 1;
+  font-size: var(--text-body);
+  line-height: 1.4;
+  color: var(--ink);
+}
+
+.checkEmpty {
+  cursor: default;
+}
+.checkEmpty .checkLabel {
+  color: var(--dust-400);
+}
+
+.sheetFoot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-top: 1px solid var(--hairline);
+  position: sticky;
+  bottom: 0;
+  background: var(--page);
+}
+
+.apply {
+  flex: 1;
+}

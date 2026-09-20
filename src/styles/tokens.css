@@ -1,0 +1,121 @@
+/*
+ * Design tokens. Extracted from the inline styles in the design export and
+ * fixed by the HomeGuy Brand Guide v1.0 §6-§8.
+ *
+ * No component in this repo may write a hex literal. eslint.config.mjs
+ * enforces it, and src/core/__tests__/contrast.test.ts fails the build if a
+ * forbidden pairing (white on clay) ever appears.
+ *
+ * Ratios below were computed against the surface named, not estimated.
+ */
+
+:root {
+  /* ---- clay · brand ------------------------------------------------- */
+  --clay-50: #fff3ea;
+  --clay-100: #ffe0c9;
+  --clay-200: #fdc094;
+  --clay-300: #f79e5f;
+  --clay-400: #f28034;
+  --clay-500: #ec6410; /* primary. 3.21:1 on paper. Large fills and graphics only. */
+  --clay-600: #c9500a;
+  --clay-700: #9e3d09; /* 6.57:1 on paper. Carries anything under 24px. */
+  --clay-800: #742c08;
+  --clay-900: #451a05;
+
+  /* ---- dust · surface & text ---------------------------------------- */
+  --dust-0: #ffffff;
+  --dust-50: #fffcf8; /* page */
+  --dust-100: #f6f1eb;
+  --dust-200: #e8e1db; /* decorative rule only. 1.27:1 - never a control border. */
+  --dust-300: #d3c9c1;
+  --dust-400: #a89d95;
+  --dust-500: #8a7f77; /* minimum control border. 3.81:1 */
+  --dust-600: #6b6360; /* secondary text. 5.74:1 */
+  --dust-700: #4a4440;
+  --dust-800: #2a2523;
+  --dust-900: #14110f; /* ink. body text, 18.38:1 */
+
+  /* ---- palm · verified, fresh, resolved ------------------------------ */
+  --palm-50: #e6f4f1;
+  --palm-300: #5cc2b4;
+  --palm-500: #14a08f;
+  --palm-700: #0f766e; /* 4.84:1 on palm-50 */
+  --palm-900: #0a4a45;
+
+  /* ---- ember · stale, flagged, failed -------------------------------- */
+  --ember-50: #fbeae8;
+  --ember-300: #f08a7e;
+  --ember-500: #e0483a;
+  --ember-700: #b42318; /* 5.65:1 on ember-50 */
+  --ember-900: #6e1610;
+
+  /* ---- semantic roles ------------------------------------------------ */
+  --page: var(--dust-50);
+  --surface: var(--dust-0);
+  --surface-raised: var(--dust-100);
+  --ink: var(--dust-900);
+  --ink-secondary: var(--dust-600);
+  --ink-tertiary: var(--dust-700);
+  --ink-not-stated: var(--dust-500);
+  --link: var(--clay-700);
+  --link-hover: var(--clay-800);
+  --hairline: var(--dust-200);
+  --control-border: var(--dust-500);
+  --focus-ring: var(--clay-500);
+
+  /* The primary button: clay-500 fill with an INK label (5.73:1).
+     White on clay-500 is 2.80:1 and fails AA. There is no token for it. */
+  --button-primary-bg: var(--clay-500);
+  --button-primary-bg-hover: var(--clay-400);
+  --button-primary-ink: var(--dust-900);
+  --button-primary-edge: var(--clay-700);
+  --button-disabled-bg: var(--dust-200);
+  --button-disabled-ink: var(--dust-600);
+
+  /* ---- type · Brand Guide §8 ----------------------------------------- */
+  --font-sans: 'Space Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --text-display: 56px;
+  --text-h1: 40px;
+  --text-h2: 28px;
+  --text-h3: 22px;
+  --text-body-l: 18px;
+  --text-body: 16px;
+  --text-caption: 13px;
+  --text-overline: 12px;
+  --text-micro: 11px;
+
+  --track-display: -1.96px;
+  --track-h1: -1.2px;
+  --track-h2: -0.56px;
+  --track-h3: -0.22px;
+  --track-overline: 1.2px;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-bold: 700;
+
+  /* ---- space · 4px scale --------------------------------------------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* ---- radius · Brand Guide §11 -------------------------------------- */
+  --radius-control: 8px;
+  --radius-card: 12px;
+  --radius-panel: 20px;
+  --radius-pill: 999px;
+
+  /* ---- targets · WCAG 2.1 AA, everywhere including desktop ----------- */
+  --target: 44px;
+  --control-height: 52px;
+
+  /* No shadow tokens exist. Elevation is surface plus a 1px hairline.
+     Brand Guide §11: shadows cost bytes and render badly on low-end panels. */
+}

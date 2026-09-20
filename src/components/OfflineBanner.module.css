@@ -1,0 +1,21 @@
+.banner {
+  background: var(--surface-raised);
+  border-bottom: 1px solid var(--hairline);
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+@media (min-width: 768px) {
+  .banner {
+    padding: var(--space-3) var(--space-6);
+  }
+}
+
+.head {
+  font-size: 15px;
+  font-weight: var(--weight-medium);
+  line-height: 1.4;
+  color: var(--ink);
+}

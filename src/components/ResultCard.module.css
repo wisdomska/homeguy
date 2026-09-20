@@ -1,0 +1,255 @@
+/*
+ * The result card. HomeGuy Web.dc.html:387-425.
+ *
+ * The rule this file exists to keep: the card is the same size in every
+ * state. No photo, no landmark, no advance, three agents or one - the
+ * thumbnail box, the figure line and the badge row all hold their height,
+ * so a list of mixed-completeness results does not jitter as it loads.
+ */
+
+.card {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+  cursor: pointer;
+  color: inherit;
+  text-decoration: none;
+  transition:
+    transform 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  border-color: var(--dust-400);
+}
+.card:active {
+  transform: translateY(0);
+}
+
+.over {
+  border-color: var(--dust-300);
+}
+
+/* ---- thumbnail: a fixed box, whatever is or is not inside it --------- */
+
+.thumb {
+  position: relative;
+  flex: none;
+  width: 88px;
+  height: 88px;
+  border-radius: var(--radius-control);
+  overflow: hidden;
+  background: linear-gradient(150deg, var(--dust-100) 0%, var(--dust-200) 100%);
+}
+
+@media (min-width: 768px) {
+  .thumb {
+    width: 112px;
+    height: 112px;
+  }
+}
+
+.plan {
+  position: absolute;
+  inset: 24%;
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+.planBlock {
+  border: 1px solid var(--dust-300);
+  border-radius: 2px;
+  background: var(--dust-50);
+}
+
+.photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.photoBadge {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  background: var(--dust-900);
+  color: var(--dust-50);
+  font-size: var(--text-micro);
+  font-weight: 600;
+  border-radius: var(--radius-pill);
+  padding: 2px 6px;
+}
+
+.noPhotoLabel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--dust-50);
+  color: var(--dust-700);
+  font-size: var(--text-micro);
+  font-weight: 600;
+  padding: 3px 4px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- body ------------------------------------------------------------ */
+
+.body {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.flagRow {
+  display: flex;
+  align-items: center;
+  min-height: 22px;
+}
+
+.awayPill {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--dust-100);
+  color: var(--ink-secondary);
+  font-size: var(--text-micro);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.overLabel,
+.reason {
+  font-size: var(--text-overline);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--track-overline);
+  color: var(--clay-700);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reason {
+  letter-spacing: 0.6px;
+}
+
+/* The largest element on the card. Always. */
+.figure {
+  font-size: 26px;
+  font-weight: var(--weight-bold);
+  line-height: 1.15;
+  letter-spacing: -0.52px;
+  color: var(--ink);
+}
+
+.qualifier {
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+  line-height: 1.45;
+  color: var(--ink-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.type {
+  font-size: 15px;
+  font-weight: var(--weight-medium);
+  line-height: 1.4;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.place {
+  font-size: var(--text-caption);
+  line-height: 1.45;
+  color: var(--ink-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* "Not stated" is rendered, never hidden, and never in a warning colour. */
+.placeNotStated {
+  color: var(--ink-not-stated);
+}
+
+.badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 22px;
+  margin-top: 2px;
+  overflow: hidden;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-micro);
+  font-weight: 600;
+  white-space: nowrap;
+  flex: none;
+}
+
+.cluster {
+  background: var(--clay-50);
+  color: var(--clay-700);
+}
+
+.notStated {
+  background: var(--dust-100);
+  color: var(--ink-secondary);
+}
+
+.sourceLine {
+  font-size: var(--text-micro);
+  font-weight: var(--weight-medium);
+  color: var(--ink-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-height: 16px;
+  margin-top: 2px;
+}
+
+/* ---- loading skeleton, same box ------------------------------------- */
+
+.skeletonBlock {
+  background: var(--dust-100);
+  background-image: linear-gradient(
+    90deg,
+    var(--dust-100) 0px,
+    var(--dust-50) 120px,
+    var(--dust-100) 240px
+  );
+  background-size: 320px 100%;
+  animation: hgShimmer 1.2s linear infinite;
+  border-radius: 4px;
+}
+
+.skeletonLine {
+  background: var(--dust-100);
+  border-radius: 4px;
+}

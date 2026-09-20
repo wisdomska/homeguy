@@ -1,0 +1,26 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.grow {
+  flex: 1 1 160px;
+}
+
+.noteLabel {
+  display: block;
+}
+
+.note {
+  width: 100%;
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-control);
+  padding: var(--space-3);
+  font-size: var(--text-body);
+  line-height: 1.45;
+  color: var(--ink);
+  background: var(--dust-0);
+  resize: vertical;
+  min-height: 72px;
+}

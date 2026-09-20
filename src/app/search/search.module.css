@@ -1,0 +1,104 @@
+.shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.split {
+  display: flex;
+  min-height: 0;
+  max-width: 1440px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 var(--space-4);
+  gap: var(--space-4);
+}
+
+@media (min-width: 768px) {
+  .split {
+    padding: 0 var(--space-6);
+  }
+}
+@media (min-width: 1024px) {
+  .split {
+    padding: 0 var(--space-8);
+  }
+}
+
+.list {
+  flex: 1 1 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) 0 92px;
+}
+
+@media (min-width: 768px) {
+  .list {
+    padding: var(--space-4) 0 var(--space-12);
+  }
+}
+
+.countRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.count {
+  font-size: var(--text-body);
+  font-weight: var(--weight-medium);
+  color: var(--ink);
+  margin: 0;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4) 0 var(--space-3);
+}
+
+.dividerRule {
+  height: 1px;
+  flex: 1;
+  background: var(--hairline);
+}
+
+.more {
+  display: flex;
+  justify-content: center;
+  padding-top: var(--space-4);
+}
+
+.grow {
+  flex: 1 1 160px;
+}
+
+.nearby {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.nearbyRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: var(--target);
+  border-bottom: 1px solid var(--hairline);
+  color: inherit;
+}

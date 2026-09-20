@@ -1,0 +1,346 @@
+// HomeGuy data model.
+//
+// The types in src/core/types.ts are the contract; this is the storage for
+// them. Two rules run through the whole thing:
+//
+//   1. Money is integer minor units (pesewas). Never a float, never a
+//      string, never a currency other than GHS.
+//   2. advanceMonths is nullable and has NO DEFAULT. A listing that did not
+//      state its advance has no advance, and totalToMoveIn is therefore
+//      null. There is deliberately no DEFAULT clause anywhere near it — a
+//      database default is exactly the kind of quiet inference the product
+//      exists to refuse.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
+}
+
+enum UnitType {
+  chamber_and_hall_self_contain
+  chamber_and_hall
+  single_room_self_contain
+  single_room
+  self_contain_studio
+  boys_quarters
+  hostel_bed
+  bedroom_1
+  bedroom_2
+  bedroom_3
+  bedroom_4_plus
+}
+
+enum WaterSource {
+  gwcl
+  borehole
+  tanker
+}
+
+enum MeterArrangement {
+  self
+  shared
+  prepaid
+}
+
+enum SourceKind {
+  api
+  feed
+  crawl
+  user_paste
+  agent_direct
+}
+
+enum ReportStatus {
+  open
+  actioned
+  dismissed
+}
+
+model Region {
+  id    String @id
+  name  String
+  slug  String @unique
+  towns Town[]
+}
+
+model Town {
+  id       String  @id
+  region   Region  @relation(fields: [regionId], references: [id])
+  regionId String
+  name     String
+  slug     String  @unique
+  /// The larger town this one hangs off, for near-miss results.
+  hubTown   Town?  @relation("TownHub", fields: [hubTownId], references: [id])
+  hubTownId String?
+  hubTowns  Town[] @relation("TownHub")
+  hubDistanceM Int?
+  lat      Float?
+  lng      Float?
+  /// "Kumasi · area, Ashanti"
+  sub      String
+
+  areas     Area[]
+  landmarks Landmark[]
+  clusters  Cluster[]
+
+  @@index([regionId])
+}
+
+model Area {
+  id     String  @id @default(cuid())
+  town   Town    @relation(fields: [townId], references: [id])
+  townId String
+  name   String
+  slug   String  @unique
+  clusters Cluster[]
+
+  @@index([townId])
+}
+
+model Landmark {
+  id     String  @id @default(cuid())
+  town   Town    @relation(fields: [townId], references: [id])
+  townId String
+  name   String
+  lat    Float?
+  lng    Float?
+  clusters Cluster[]
+
+  @@index([townId])
+  @@unique([townId, name])
+}
+
+model Source {
+  id   String     @id
+  name String
+  kind SourceKind
+  /// The kill switch. False means the pipeline skips it entirely.
+  enabled Boolean @default(false)
+  robotsCheckedAt DateTime?
+  /// Tier 3 crawling is false. Act 843 has no public-data exemption.
+  mayStoreContact Boolean @default(false)
+  listings Listing[]
+}
+
+/// The searchable object. Contract C: a canonical property, never a listing.
+model Cluster {
+  id     String @id @default(cuid())
+  slug   String @unique
+  town   Town   @relation(fields: [townId], references: [id])
+  townId String
+  area   Area?  @relation(fields: [areaId], references: [id])
+  areaId String?
+
+  unitType UnitType
+
+  nearestLandmark   Landmark? @relation(fields: [nearestLandmarkId], references: [id])
+  nearestLandmarkId String?
+  approxDistanceM   Int?
+
+  // ---- attributes. EVERY ONE nullable. Contract B. ----
+  water      WaterSource?
+  /// 0-7. Null means nobody said, which is not the same as zero.
+  waterDays  Int?
+  polytank   Boolean?
+  meter      MeterArrangement?
+  toilet     String?
+  bathroom   String?
+  kitchen    String?
+  gated      Boolean?
+
+  directions String?
+  photoCount Int     @default(0)
+  /// Set only once we hold our own ingested thumbnail. We do not rehost a
+  /// source portal's imagery.
+  thumbnailUrl String?
+
+  lastVerifiedAt DateTime
+
+  // ---- derived, written by the pipeline, never by hand ----
+  rentMin            Int?
+  rentMax            Int?
+  advanceMonthsMin   Int?
+  advanceMonthsMax   Int?
+  totalToMoveInMin   Int?
+  totalToMoveInMax   Int?
+  sourceCount        Int  @default(0)
+
+  mapX Int @default(50)
+  mapY Int @default(50)
+
+  listings Listing[]
+  events   ListingEvent[]
+  reports  Report[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([townId, unitType])
+  @@index([townId, totalToMoveInMin])
+  @@index([lastVerifiedAt])
+}
+
+model Listing {
+  id        String  @id @default(cuid())
+  cluster   Cluster @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+  clusterId String
+  source    Source  @relation(fields: [sourceId], references: [id])
+  sourceId  String
+  /// Always kept. Every card and every detail row links back to it.
+  sourceUrl String
+
+  /// Minor units (pesewas).
+  monthlyRent Int?
+  /// NO DEFAULT. Null is normal and is never filled in.
+  advanceMonths Int?
+  agentFee Int?
+
+  /// Only populated where the source's route permits it.
+  agentName  String?
+  agentPhone String?
+  /// Null means unchecked. NOT false.
+  reacLicensed Boolean?
+
+  firstSeenAt    DateTime
+  lastVerifiedAt DateTime
+  goneAt         DateTime?
+
+  rawTitle String @db.Text
+  rawBody  String @db.Text
+
+  /// Why we believe we may hold this record, recorded per listing.
+  lawfulBasisNote String @db.Text
+
+  events ListingEvent[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([sourceId, sourceUrl])
+  @@index([clusterId])
+  @@index([goneAt])
+}
+
+/// The event log the digest reads. Without it, "taken" and "price changed"
+/// cannot be produced honestly.
+model ListingEvent {
+  id        String   @id @default(cuid())
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  listingId String
+  cluster   Cluster  @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+  clusterId String
+  /// "new" | "taken" | "price_changed" | "verified" | "gone"
+  kind      String
+  previousRent Int?
+  newRent      Int?
+  at        DateTime @default(now())
+
+  @@index([clusterId, at])
+  @@index([kind, at])
+}
+
+/// Every merge decision, scored, so a wrong one can be found and split.
+model MergeDecision {
+  id        String   @id @default(cuid())
+  aId       String
+  bId       String
+  score     Float
+  merged    Boolean
+  reasons   String[]
+  at        DateTime @default(now())
+  /// Set when a human overrode the automatic decision.
+  overriddenBy String?
+
+  @@index([at])
+}
+
+/// Read by a person. No listing is removed automatically.
+model Report {
+  id        String       @id @default(cuid())
+  cluster   Cluster?     @relation(fields: [clusterId], references: [id])
+  clusterId String?
+  reason    String
+  freeText  String?      @db.Text
+  status    ReportStatus @default(open)
+  outcomeNote String?    @db.Text
+  filedAt   DateTime     @default(now())
+  actionedAt DateTime?
+
+  @@index([status, filedAt])
+}
+
+/// A data-subject erasure request under Act 843 s.33, and what we did.
+model ErasureRequest {
+  id          String    @id @default(cuid())
+  subject     String
+  note        String?   @db.Text
+  requestedAt DateTime  @default(now())
+  completedAt DateTime?
+  listingsAffected Int  @default(0)
+
+  @@index([requestedAt])
+}
+
+/// Per-source run history, for the canary and /admin/health.
+model IngestRun {
+  id             String   @id @default(cuid())
+  sourceId       String
+  startedAt      DateTime
+  finishedAt     DateTime
+  yield          Int
+  parseFailures  Int      @default(0)
+  robotsBlocked  Int      @default(0)
+  meanAgeAtIndexHours Float?
+  ok             Boolean
+  error          String?  @db.Text
+
+  @@index([sourceId, finishedAt])
+}
+
+/// A phone-first account. Exists only to sync across devices and receive
+/// the digest. Never a gate: everything works without one.
+model Account {
+  id        String   @id @default(cuid())
+  phoneE164 String   @unique
+  verifiedAt DateTime?
+  email     String?
+  createdAt DateTime @default(now())
+
+  savedSearches SavedSearch[]
+  entries       ShortlistEntry[]
+}
+
+model SavedSearch {
+  id        String   @id @default(cuid())
+  account   Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId String
+  /// The query string, which is the whole filter state.
+  query     String
+  alertsOn  Boolean  @default(true)
+  lastDigestAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@unique([accountId, query])
+}
+
+model ShortlistEntry {
+  id        String   @id @default(cuid())
+  account   Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId String
+  clusterId String
+  /// "saved" | "discarded"
+  verdict   String
+  /// "Good" | "Ok" | "Poor". Ordinal, never an additive score.
+  rating    String?
+  status    String   @default("Not contacted")
+  note      String?  @db.Text
+  updatedAt DateTime @updatedAt
+
+  @@unique([accountId, clusterId])
+  @@index([accountId, verdict])
+}

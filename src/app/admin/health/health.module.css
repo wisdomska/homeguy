@@ -1,0 +1,34 @@
+.wrap {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4) var(--space-12);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-caption);
+}
+
+.table th,
+.table td {
+  text-align: left;
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.table th {
+  color: var(--ink-secondary);
+  font-weight: var(--weight-medium);
+}
+
+.alert {
+  border: 1px solid var(--ember-700);
+  background: var(--ember-50);
+  color: var(--ember-900);
+  border-radius: var(--radius-card);
+  padding: var(--space-4);
+}

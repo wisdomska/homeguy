@@ -1,0 +1,206 @@
+.wrap {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-2) var(--space-4) var(--space-6);
+  min-height: 100vh;
+}
+
+@media (min-width: 768px) {
+  .wrap {
+    padding: var(--space-12) var(--space-6);
+  }
+}
+
+.inner {
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.topRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--target);
+}
+
+.bars {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.bar,
+.barOn {
+  height: 3px;
+  flex: 1;
+  border-radius: var(--radius-pill);
+  background: var(--hairline);
+}
+
+.barOn {
+  background: var(--clay-500);
+}
+
+.money {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.currency {
+  font-size: var(--text-h2);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--track-h2);
+  color: var(--ink-secondary);
+}
+
+.amount {
+  font-size: var(--text-display);
+  font-weight: var(--weight-bold);
+  line-height: 1.05;
+  letter-spacing: var(--track-display);
+  color: var(--ink);
+}
+
+.amountEmpty {
+  color: var(--dust-400);
+}
+
+.caret {
+  width: 2px;
+  height: 40px;
+  background: var(--clay-500);
+  align-self: center;
+}
+
+.consequence {
+  min-height: 38px;
+  margin: 0;
+}
+
+.lesson {
+  background: var(--clay-50);
+  border-radius: var(--radius-card);
+  padding: var(--space-4);
+  font-size: var(--text-caption);
+  line-height: 1.55;
+  color: var(--ink);
+  margin: 0;
+}
+
+.desktopEntry {
+  display: none;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+@media (min-width: 768px) {
+  .desktopEntry {
+    display: flex;
+  }
+}
+
+.inputWrap {
+  flex: 1 1 200px;
+  height: var(--control-height);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-control);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+  width: 100%;
+}
+
+.prefix {
+  font-size: var(--text-body);
+  color: var(--ink-secondary);
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: var(--text-body);
+  color: var(--ink);
+}
+
+.placeStep {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.townList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.townRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: var(--target);
+  border: none;
+  border-bottom: 1px solid var(--hairline);
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  padding: 0;
+}
+
+.townRow[aria-pressed='true'] {
+  background: var(--clay-50);
+}
+
+.townName {
+  font-size: var(--text-body);
+  color: var(--ink);
+  flex: none;
+}
+
+.townRow > :nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+
+/* The keypad. Mobile only: on desktop the ladder and the input do the job. */
+.keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--hairline);
+  margin-top: auto;
+}
+
+@media (min-width: 768px) {
+  .keypad {
+    display: none;
+  }
+}
+
+.key {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: var(--weight-medium);
+  color: var(--ink);
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--surface-raised);
+  cursor: pointer;
+  user-select: none;
+}
+
+.key:active {
+  background: var(--surface-raised);
+}
