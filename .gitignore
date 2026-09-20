@@ -15,3 +15,6 @@ blob-report/
 bundle-report.md
 coverage/
 .DS_Store
+
+.vercel
+.env*
