@@ -73,8 +73,21 @@ export function passes(c: ClusterView, f: Filters): boolean {
   if (f.types.length > 0 && !f.types.includes(c.unitType)) return false;
 
   // --- advance path ---
+  //
+  // A cluster with no stated advance is excluded from a STRICT match — one
+  // where the person actually said which advance terms they can take. It is
+  // not excluded when they said nothing about the advance at all, because
+  // there is no criterion for it to fail.
+  //
+  // This matters more than it reads. Research Dossier §12 contract B says
+  // not-stated listings are "excluded from strict matches but offered in a
+  // clearly labelled separate group — never silently hidden". Excluding
+  // them from every search, including one with no advance filter set, is
+  // the silent hiding that contract forbids: against real Jiji and Tonaton
+  // data, where 96% publish no advance term, it emptied the results page
+  // for almost every town.
   if (c.advanceMonthsMin === null) {
-    if (!f.includeNotStated) return false;
+    if (f.advances.length > 0 && !f.includeNotStated) return false;
   } else if (f.advances.length > 0) {
     const stated = c.listings
       .map((l) => l.advanceMonths)

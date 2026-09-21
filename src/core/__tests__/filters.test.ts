@@ -9,19 +9,35 @@ import { clusterById, clustersFor, clustersInTown } from '../repo';
 
 const ahodwo = () => clustersFor(['ahodwo']);
 
-describe('the not-stated advance is excluded by default and never hidden', () => {
-  it('excludes a null-advance cluster from a strict match', () => {
+describe('the not-stated advance is excluded from strict matches, never hidden', () => {
+  it('is SHOWN when the user has said nothing about the advance', () => {
+    // Contract B forbids silent hiding. With no advance criterion set there
+    // is nothing for a null advance to fail, so it belongs in the results.
+    // Against real data — 96% of Jiji and Tonaton listings publish no term —
+    // the opposite rule emptied the results page for almost every town.
     const a5 = clusterById('a5');
     expect(a5).not.toBeNull();
     if (a5 === null) return;
-    expect(passes(a5, { ...EMPTY_FILTERS, towns: ['ahodwo'] })).toBe(false);
+    expect(a5.advanceMonthsMin).toBeNull();
+    expect(passes(a5, { ...EMPTY_FILTERS, towns: ['ahodwo'] })).toBe(true);
   });
 
-  it('includes it the moment the user asks for it', () => {
+  it('is excluded once the user names the advance terms they can take', () => {
+    const a5 = clusterById('a5');
+    if (a5 === null) return;
+    expect(passes(a5, { ...EMPTY_FILTERS, towns: ['ahodwo'], advances: [12] })).toBe(false);
+  });
+
+  it('comes back the moment the user asks to include it', () => {
     const a5 = clusterById('a5');
     if (a5 === null) return;
     expect(
-      passes(a5, { ...EMPTY_FILTERS, towns: ['ahodwo'], includeNotStated: true }),
+      passes(a5, {
+        ...EMPTY_FILTERS,
+        towns: ['ahodwo'],
+        advances: [12],
+        includeNotStated: true,
+      }),
     ).toBe(true);
   });
 
