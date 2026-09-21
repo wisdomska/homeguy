@@ -147,6 +147,36 @@ export async function dbClustersFor(townSlugs: string[], take = 400): Promise<Cl
   return rows.map((r) => toView(r, now));
 }
 
+/**
+ * Clusters whose neighbourhood or title mentions the query.
+ *
+ * The sources file every Kumasi advert under the district, so "Ahodwo" and
+ * "Danyame" live in the landmark we extracted from the title rather than in
+ * any town name. Without this, a search for the neighbourhood someone
+ * actually wants returns nothing while the index holds the listing.
+ */
+export async function dbClustersMatchingPlace(
+  query: string,
+  take = 400,
+): Promise<ClusterView[]> {
+  const q = query.trim();
+  if (q.length < 3) return [];
+  const rows = await db().cluster.findMany({
+    where: {
+      listings: { some: { goneAt: null } },
+      OR: [
+        { nearestLandmark: { name: { contains: q, mode: 'insensitive' } } },
+        { listings: { some: { rawTitle: { contains: q, mode: 'insensitive' } } } },
+      ],
+    },
+    include: INCLUDE,
+    orderBy: { lastVerifiedAt: 'desc' },
+    take,
+  });
+  const now = new Date();
+  return rows.map((r) => toView(r, now));
+}
+
 export async function dbClusterBySlug(slug: string): Promise<ClusterView | null> {
   const row = await db().cluster.findUnique({ where: { slug }, include: INCLUDE });
   return row === null ? null : toView(row, new Date());

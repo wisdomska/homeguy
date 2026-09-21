@@ -19,6 +19,7 @@ import {
   dbClusterBySlug,
   dbClustersByIds,
   dbClustersFor,
+  dbClustersMatchingPlace,
   dbRegionsWithCoverage,
   dbSourceNames,
   dbTotalClusterCount,
@@ -39,6 +40,17 @@ export function indexAvailable(): boolean {
 export async function clustersFor(townSlugs: string[]): Promise<ClusterView[]> {
   if (!hasDatabase()) return [];
   return dbClustersFor(townSlugs);
+}
+
+/**
+ * A last resort before telling someone we cover nowhere near them: match
+ * the neighbourhood out of the listing text. "Ahodwo" is not a town in the
+ * index — the sources call it Kumasi Metropolitan — but it is in the title
+ * of the adverts a renter is looking for.
+ */
+export async function clustersMatchingPlace(query: string): Promise<ClusterView[]> {
+  if (!hasDatabase()) return [];
+  return dbClustersMatchingPlace(query);
 }
 
 export async function clusterBySlug(slug: string): Promise<ClusterView | null> {

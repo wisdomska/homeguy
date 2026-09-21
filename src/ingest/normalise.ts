@@ -208,3 +208,46 @@ export function parseGhanaPhone(text: string): string | null {
   if (m === null) return null;
   return `+233 ${m[1]} ${m[2]} ${m[3]}`;
 }
+
+/* ---- neighbourhood ---------------------------------------------------- */
+
+/**
+ * The place named inside a listing title.
+ *
+ * Jiji and Tonaton file every Kumasi advert under the district — "Ashanti,
+ * Kumasi Metropolitan" — so the neighbourhood a renter actually navigates
+ * by exists only in the title:
+ *
+ *   "5bdrm Apartment in Ahodwo Melcom, Kumasi Metropolitan for rent"
+ *
+ * Without this, searching Ahodwo returned nothing while the index held the
+ * listing, and every card read "Location not stated".
+ *
+ * Returns null rather than a guess when the fragment is obviously a seller
+ * rather than a place — "Alex Otuo Properties", "Free Will Agency". Those
+ * are the advertiser's name, and treating them as a location would put a
+ * company where a neighbourhood should be.
+ */
+const SELLER_MARKERS =
+  /\b(agency|agencies|properties|property|realty|real\s*estate|ltd|limited|company|enterprise|ventures|consult|investments?)\b/i;
+
+export function parseNeighbourhood(title: string, townName: string): string | null {
+  const m = /\bin\s+([^,]{3,40}),/i.exec(title);
+  if (m === null) return null;
+  const raw = m[1];
+  if (raw === undefined) return null;
+
+  const place = raw.trim().replace(/\s+/g, ' ');
+  if (place.length < 3) return null;
+
+  // The district repeated is not a neighbourhood.
+  if (place.toLowerCase() === townName.toLowerCase()) return null;
+
+  // A trailing preposition means the title was cut mid-phrase:
+  // "Mark Estate At", "Trimude Agency And".
+  if (/\b(at|and|near|by|off|for|with)$/i.test(place)) return null;
+
+  if (SELLER_MARKERS.test(place)) return null;
+
+  return place;
+}

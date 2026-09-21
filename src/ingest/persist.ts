@@ -24,6 +24,7 @@ import { PrismaClient, type Prisma } from '@prisma/client';
 import { totalToMoveIn } from '@/core/money';
 import { REGIONS } from '@/core/geo';
 import { sourceConfig } from './config';
+import { parseNeighbourhood } from './normalise';
 import type { RawListing } from './adapters/types';
 
 export interface PersistResult {
@@ -222,6 +223,32 @@ function overlap(a: string[], b: string[]): number {
  */
 const MAX_RENT_RATIO = 3;
 
+/**
+ * The neighbourhood the advert names, stored as a landmark on the cluster.
+ *
+ * Both sources file every Kumasi listing under the district, so "Ahodwo",
+ * "Danyame" and "Kwadaso Siloam" exist only inside the title. Without this
+ * they were unsearchable and every card read "Location not stated".
+ */
+async function resolveLandmarkId(
+  db: PrismaClient,
+  raw: RawListing,
+  townId: string,
+  townName: string,
+): Promise<string | null> {
+  const place = parseNeighbourhood(raw.rawTitle, townName);
+  if (place === null) return null;
+
+  const existing = await db.landmark.findUnique({
+    where: { townId_name: { townId, name: place } },
+    select: { id: true },
+  });
+  if (existing !== null) return existing.id;
+
+  const created = await db.landmark.create({ data: { townId, name: place } });
+  return created.id;
+}
+
 /** Recompute every derived money field from the cluster's live listings. */
 export async function recomputeCluster(db: PrismaClient, clusterId: string): Promise<void> {
   const listings = await db.listing.findMany({
@@ -330,6 +357,16 @@ export async function persistListings(
     if (clusterId !== null) result.clustered += 1;
 
     if (clusterId === null) {
+      const townRow = await db.town.findUnique({
+        where: { id: townId },
+        select: { name: true },
+      });
+      const landmarkId = await resolveLandmarkId(
+        db,
+        raw,
+        townId,
+        townRow === null ? '' : townRow.name,
+      );
       const base = slugify(`${raw.townHint ?? townId}-${raw.rawTitle}`).slice(0, 70);
       const slug = `${base}-${Math.random().toString(36).slice(2, 8)}`;
       const cluster = await db.cluster.create({
@@ -337,6 +374,7 @@ export async function persistListings(
           slug,
           townId,
           unitType: raw.unitType ?? 'single_room',
+          nearestLandmarkId: landmarkId,
           water: raw.water,
           waterDays: raw.waterDays,
           polytank: raw.polytank,

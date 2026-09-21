@@ -9,7 +9,15 @@ import type { ClusterView, UnitType } from '@/core/types';
 import { assessCoverage, findBlockingFilter, nearbyCoverage } from '@/core/coverage';
 import { nearMisses } from '@/core/nearmiss';
 import { buildCard } from '@/core/cardModel';
-import { clustersFor, sourceNameMap, nameFrom, townCountMap, townsWithCounts, TOWN_BY_SLUG } from '@/core';
+import {
+  clustersFor,
+  clustersMatchingPlace,
+  sourceNameMap,
+  nameFrom,
+  townCountMap,
+  townsWithCounts,
+  TOWN_BY_SLUG,
+} from '@/core';
 import { ResultCard } from '@/components/ResultCard';
 import { FilterControls } from '@/components/FilterControls';
 import { MapPanel } from '@/components/MapPanel';
@@ -47,12 +55,27 @@ export default async function SearchPage({
   // back to everything and then labelling it with the query would tell
   // someone there are thousands of rooms in a place we track nothing in,
   // which is the single most damaging thing this product could say.
-  const unresolved = match !== null && match.kind === 'none';
+  let unresolved = match !== null && match.kind === 'none';
+
+  // Before declaring a coverage gap, look for the place inside the listings
+  // themselves. Both sources file every Kumasi advert under the district, so
+  // "Ahodwo" and "Danyame" live in the advert text rather than in any town
+  // name — and telling someone we cover nothing there, while holding the
+  // listings they asked for, is the worst wrong answer available.
+  let byPlace: Awaited<ReturnType<typeof clustersMatchingPlace>> = [];
+  if (unresolved && match !== null) {
+    byPlace = await clustersMatchingPlace(match.query);
+    if (byPlace.length > 0) unresolved = false;
+  }
 
   const sourceNames = await sourceNameMap();
   const sourceName = nameFrom(sourceNames);
-  const all = unresolved ? [] : await clustersFor(filters.towns);
-  const matched = unresolved ? [] : sortResults(matching(all, filters), filters.towns);
+  const all =
+    byPlace.length > 0 ? byPlace : unresolved ? [] : await clustersFor(filters.towns);
+  const effectiveFilters = byPlace.length > 0 ? { ...filters, towns: [] } : filters;
+  const matched = unresolved
+    ? []
+    : sortResults(matching(all, effectiveFilters), effectiveFilters.towns);
   const { affordable, over } = splitByBudget(matched, filters.lumpMax);
   const verdict = assessCoverage(all, filters, matched);
 
@@ -246,7 +269,7 @@ export default async function SearchPage({
               <AlertButton townLabel={townLabel} towns={filters.towns} />
               <h3 className={ui.overline}>{RESULTS.zeroCoverageNearby}</h3>
               <ul className={styles.nearby}>
-                {(unresolved
+                {(unresolved && match !== null
                   ? match.suggestions.map((sg) => ({
                       townSlug: sg.slug,
                       townName: sg.name,
