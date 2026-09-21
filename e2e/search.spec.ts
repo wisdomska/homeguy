@@ -180,3 +180,30 @@ test('no scarcity or social proof appears on a results page', async ({ page }) =
     expect(body.toLowerCase(), phrase).not.toContain(phrase);
   }
 });
+
+test('a location we do not cover returns nothing, and says so', async ({ page }) => {
+  // The failure this guards against: falling back to "anywhere in Ghana"
+  // and then labelling the results with the query, so the page claims
+  // thousands of rooms in a place we track nothing in.
+  await page.goto('/search?q=Dzorwulu');
+
+  await expect(page.getByTestId('zero-coverage')).toBeVisible();
+  await expect(page.getByTestId('results')).toHaveCount(0);
+
+  const body = (await page.textContent('body')) ?? '';
+  expect(body).toContain('Dzorwulu');
+  expect(body).toContain("This isn't you");
+  // And no result count claiming otherwise.
+  expect(body).not.toMatch(/\d{2,} places in Dzorwulu/);
+});
+
+test('a typed location resolves the way a person would expect', async ({ page }) => {
+  for (const [query, expected] of [
+    ['Ahodwo', 'Ahodwo'],
+    ['ahodow', 'Ahodwo'],
+    ['a room in Tamale', 'Tamale'],
+  ] as const) {
+    await page.goto(`/search?q=${encodeURIComponent(query)}`);
+    await expect(page.getByTestId('result-count')).toContainText(expected);
+  }
+});

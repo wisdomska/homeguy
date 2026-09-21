@@ -39,8 +39,14 @@ export default async function SearchPage({
   const pageParam = typeof sp['page'] === 'string' ? Number(sp['page']) : 1;
   const page = Number.isInteger(pageParam) && pageParam > 0 ? pageParam : 1;
 
-  const all = clustersFor(filters.towns);
-  const matched = sortResults(matching(all, filters), filters.towns);
+  // A location we could not resolve is NOT "anywhere in Ghana". Falling
+  // back to everything and then labelling it with the query would tell
+  // someone there are thousands of rooms in a place we track nothing in,
+  // which is the single most damaging thing this product could say.
+  const unresolved = match !== null && match.kind === 'none';
+
+  const all = unresolved ? [] : clustersFor(filters.towns);
+  const matched = unresolved ? [] : sortResults(matching(all, filters), filters.towns);
   const { affordable, over } = splitByBudget(matched, filters.lumpMax);
   const verdict = assessCoverage(all, filters, matched);
 
@@ -234,7 +240,15 @@ export default async function SearchPage({
               <AlertButton townLabel={townLabel} towns={filters.towns} />
               <h3 className={ui.overline}>{RESULTS.zeroCoverageNearby}</h3>
               <ul className={styles.nearby}>
-                {nearbyCoverage(clustersFor([]), filters.towns).map((n) => (
+                {(unresolved
+                  ? match.suggestions.map((sg) => ({
+                      townSlug: sg.slug,
+                      townName: sg.name,
+                      count: townClusterCount(sg.slug),
+                      distanceKm: null,
+                    }))
+                  : nearbyCoverage(clustersFor([]), filters.towns)
+                ).map((n) => (
                   <li key={n.townSlug}>
                     <Link className={styles.nearbyRow} href={`/search?area=${n.townSlug}`}>
                       <span>{n.townName}</span>
