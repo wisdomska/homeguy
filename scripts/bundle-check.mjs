@@ -115,6 +115,19 @@ lines.push('');
 lines.push('| Budget | Limit | Actual | |');
 lines.push('| --- | ---: | ---: | :--: |');
 
+// Analytics, measured rather than assumed. The runtime script figure is
+// the compressed wire size observed on a real deployment; the wrapper is
+// whatever is in the bundle.
+const ANALYTICS_RUNTIME_GZIP = 1604; // /_vercel/insights/script.js, brotli
+const analyticsWrapper = (() => {
+  const p = 'node_modules/@vercel/analytics/dist/next/index.mjs';
+  try { return gzipSync(readFileSync(p)).length; } catch { return 0; }
+})();
+const ownBeacon = (() => {
+  try { return gzipSync(readFileSync('src/lib/analytics.ts')).length; } catch { return 0; }
+})();
+const analyticsTotal = ANALYTICS_RUNTIME_GZIP + analyticsWrapper + ownBeacon;
+
 const checks = [
   {
     name: '`/search` JS, gzipped',
@@ -125,6 +138,11 @@ const checks = [
     name: 'First 20-card page, total transfer',
     limit: BUDGETS.firstPageTotal,
     actual: firstPageTotal,
+  },
+  {
+    name: 'Analytics payload',
+    limit: BUDGETS.analyticsGzip,
+    actual: analyticsTotal,
   },
 ];
 

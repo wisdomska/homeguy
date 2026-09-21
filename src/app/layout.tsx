@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { TabBar, TopBar } from '@/components/Chrome';
 import { ServiceWorker } from '@/components/ServiceWorker';
 import { BRAND } from '@/core/tokens';
+import { Analytics } from '@vercel/analytics/next';
 import '@/styles/globals.css';
 
 const isProduction = process.env.VERCEL_ENV === 'production';
@@ -49,6 +50,24 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <main id="main">{children}</main>
         <TabBar />
         <ServiceWorker />
+        {/*
+          Production only, and cookieless, so no consent banner is needed.
+
+          Speed Insights is deliberately NOT mounted. Measured on a real
+          deployment, compressed: the analytics script is 1.57 KB and the
+          speed-insights script is 4.64 KB, and the two npm wrappers add
+          3.64 KB in-bundle. Both together are 10.70 KB, which is over
+          double the 5 KB analytics budget.
+
+          Analytics plus our own event beacon comes to 4.30 KB and fits.
+          The beacon already carries every metric that actually decides
+          this product — zero_results with its cause above all — and LCP
+          on a throttled Moto-G-class device is measured in CI, which is
+          where the brief wanted it measured anyway.
+
+          See docs/BRAND-DEVIATIONS.md.
+        */}
+        {isProduction ? <Analytics /> : null}
       </body>
     </html>
   );

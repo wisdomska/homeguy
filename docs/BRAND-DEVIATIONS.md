@@ -135,3 +135,33 @@ specifically because searches get forwarded in WhatsApp groups.
 
 The parameter names are the design's own: `area`, `lumpMax`, `type`,
 `advance`, `seen`.
+
+## 11. Speed Insights is not mounted — the budget and the brief conflict
+
+The brief asks for "Vercel Analytics + Speed Insights, enabled on
+production only" and, two lines later, "Total analytics payload ≤ 5KB
+gzipped". Measured on a real deployment rather than estimated, those two
+cannot both hold:
+
+| | compressed wire |
+| --- | ---: |
+| `/_vercel/insights/script.js` | 1.57 KB |
+| `/_vercel/speed-insights/script.js` | 4.64 KB |
+| the two npm wrappers, in-bundle | 3.64 KB |
+| our own event beacon | 0.85 KB |
+| **both** | **10.70 KB** |
+
+Analytics plus our beacon is **4.30 KB** and fits. Speed Insights plus our
+beacon is 7.25 KB and does not, even on its own.
+
+The budget wins, for the reason the brief itself gives: an analytics bundle
+that breaks the data budget is self-defeating when the user is paying
+GH¢5–10 per GB at 3–6× the headline rate. And little is actually lost —
+our beacon already carries every metric the brief lists as mattering
+(`zero_results` with its cause above all), and LCP on a throttled
+Moto-G-class device is measured in CI, which is where the brief wanted it.
+
+`npm run bundle` now enforces the 5 KB analytics figure alongside the other
+two, so adding Speed Insights back will fail the build rather than quietly
+double the cost. Say the word if you would rather have it and raise the
+budget.
