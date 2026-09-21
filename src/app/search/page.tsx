@@ -9,7 +9,7 @@ import type { ClusterView, UnitType } from '@/core/types';
 import { assessCoverage, findBlockingFilter, nearbyCoverage } from '@/core/coverage';
 import { nearMisses } from '@/core/nearmiss';
 import { buildCard } from '@/core/cardModel';
-import { clustersFor, sourceNameMap, nameFrom, townCountMap, TOWN_BY_SLUG } from '@/core';
+import { clustersFor, sourceNameMap, nameFrom, townCountMap, townsWithCounts, TOWN_BY_SLUG } from '@/core';
 import { ResultCard } from '@/components/ResultCard';
 import { FilterControls } from '@/components/FilterControls';
 import { MapPanel } from '@/components/MapPanel';
@@ -37,7 +37,8 @@ export default async function SearchPage({
   // which lands on the zero-by-coverage screen with the query intact.
   const counts = await townCountMap();
   const countFor = (slug: string) => counts.get(slug) ?? 0;
-  const match = typed === '' ? null : resolveLocation(typed, countFor);
+  const knownTowns = await townsWithCounts();
+  const match = typed === '' ? null : resolveLocation(typed, countFor, knownTowns);
   const filters = match === null ? parsed : { ...parsed, towns: match.towns };
   const pageParam = typeof sp['page'] === 'string' ? Number(sp['page']) : 1;
   const page = Number.isInteger(pageParam) && pageParam > 0 ? pageParam : 1;

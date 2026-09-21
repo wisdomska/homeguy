@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { resolveLocation } from '../resolveLocation';
 import { townClusterCount } from '../repo';
+import { TOWNS } from '../geo';
 
-const resolve = (q: string) => resolveLocation(q, townClusterCount);
+const resolve = (q: string) => resolveLocation(q, townClusterCount, TOWNS);
 
 describe('free-text location search', () => {
   it('matches a town exactly, whatever the casing', () => {

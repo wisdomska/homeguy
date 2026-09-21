@@ -11,7 +11,7 @@
  * that already says the gap is ours.
  */
 
-import { REGIONS, TOWNS } from './geo';
+import { REGIONS } from './geo';
 import type { Region, Town } from './types';
 
 export interface LocationMatch {
@@ -72,6 +72,13 @@ function suggestionsFor(towns: Town[]): LocationMatch['suggestions'] {
 export function resolveLocation(
   raw: string,
   countFor: (townSlug: string) => number,
+  /**
+   * The towns to match against, taken from the index rather than a fixed
+   * list. Ingestion discovers them — "Kumasi Metropolitan" and "Weija" exist
+   * because listings there do. Matching against hard-coded geography meant
+   * searching "Kumasi" found nothing while the index held 310 rooms in it.
+   */
+  towns: Town[],
 ): LocationMatch {
   const query = raw.trim();
   const q = norm(query);
@@ -87,7 +94,7 @@ export function resolveLocation(
     (r) => norm(r.name) === q || norm(r.slug) === q,
   );
   if (region !== undefined) {
-    const inRegion = TOWNS.filter((t) => t.regionId === region.id).sort(byCount);
+    const inRegion = towns.filter((t) => t.regionId === region.id).sort(byCount);
     return {
       towns: inRegion.map((t) => t.slug),
       label: region.name,
@@ -98,7 +105,7 @@ export function resolveLocation(
   }
 
   // --- an exact town ---
-  const exact = TOWNS.filter((t) => norm(t.name) === q || t.slug === q);
+  const exact = towns.filter((t) => norm(t.name) === q || t.slug === q);
   if (exact.length > 0) {
     const best = [...exact].sort(byCount);
     return {
@@ -110,23 +117,28 @@ export function resolveLocation(
     };
   }
 
-  // --- a prefix: "ahod" -> Ahodwo ---
-  const prefix = TOWNS.filter((t) => norm(t.name).startsWith(q)).sort(byCount);
+  // --- a prefix: "ahod" -> Ahodwo, "kumasi" -> every Kumasi area ---
+  //
+  // All of them, not just the best one. The sources name areas as "Kumasi
+  // Metropolitan", "Kumasi Asokwa" and so on, so someone typing "Kumasi"
+  // means the city, and answering with one of its districts would hide the
+  // rest of the city from them.
+  const prefix = towns.filter((t) => norm(t.name).startsWith(q)).sort(byCount);
   if (prefix.length > 0) {
     const top = prefix[0];
     if (top !== undefined) {
       return {
-        towns: [top.slug],
-        label: top.name,
+        towns: prefix.map((t) => t.slug),
+        label: prefix.length === 1 ? top.name : query,
         query,
         kind: 'prefix',
-        suggestions: suggestionsFor(prefix.slice(1, 5)),
+        suggestions: suggestionsFor(prefix.slice(0, 6)),
       };
     }
   }
 
   // --- the town named inside a longer phrase: "a room in Tamale" ---
-  const directMention = TOWNS.filter((t) => {
+  const directMention = towns.filter((t) => {
     const n = norm(t.name);
     return n.length >= 3 && q.includes(n);
   }).sort(byCount);
@@ -144,7 +156,7 @@ export function resolveLocation(
   }
 
   // --- a city named in the sub line: "kumasi", "accra" ---
-  const cityWord = TOWNS.filter((t) => {
+  const cityWord = towns.filter((t) => {
     const city = norm(t.sub).split(' ')[0];
     return city !== undefined && city.length > 2 && (q === city || q.includes(city));
   }).sort(byCount);
@@ -159,7 +171,7 @@ export function resolveLocation(
   }
 
   // --- a typo ---
-  const typo = TOWNS.map((t) => ({ t, d: editDistance(q, norm(t.name)) }))
+  const typo = towns.map((t) => ({ t, d: editDistance(q, norm(t.name)) }))
     .filter((x) => x.d <= 2)
     .sort((a, b) => a.d - b.d || countFor(b.t.slug) - countFor(a.t.slug));
   const closest = typo[0];
@@ -180,7 +192,7 @@ export function resolveLocation(
     query,
     kind: 'none',
     suggestions: suggestionsFor(
-      [...TOWNS].filter((t) => countFor(t.slug) > 0).sort(byCount).slice(0, 6),
+      [...towns].filter((t) => countFor(t.slug) > 0).sort(byCount).slice(0, 6),
     ),
   };
 }

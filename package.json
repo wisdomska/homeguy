@@ -18,7 +18,7 @@
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "ingest:run": "tsx src/ingest/cli.ts",
-    "vercel-build": "prisma generate && prisma migrate deploy && prisma db seed && next build"
+    "vercel-build": "prisma generate && node scripts/migrate-if-configured.mjs && next build"
   },
   "dependencies": {
     "@prisma/client": "6.19.3",
