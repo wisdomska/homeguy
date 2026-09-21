@@ -2,12 +2,13 @@ import Link from 'next/link';
 import { RESULTS } from '@/core/copy';
 import { unitTypeLabel } from '@/core/copy';
 import { formatMoney } from '@/core/money';
-import { parseFilters, searchHref, toQuery } from '@/core/url';
+import { locationQuery, parseFilters, searchHref, toQuery } from '@/core/url';
+import { resolveLocation } from '@/core/resolveLocation';
 import { activeFilterCount, matching, sortResults, splitByBudget } from '@/core/filters';
 import { assessCoverage, findBlockingFilter, nearbyCoverage } from '@/core/coverage';
 import { nearMisses } from '@/core/nearmiss';
 import { buildCard } from '@/core/cardModel';
-import { clustersFor, sourceName, TOWN_BY_SLUG } from '@/core/repo';
+import { clustersFor, sourceName, townClusterCount, TOWN_BY_SLUG } from '@/core/repo';
 import { ResultCard } from '@/components/ResultCard';
 import { FilterControls } from '@/components/FilterControls';
 import { MapPanel } from '@/components/MapPanel';
@@ -27,7 +28,14 @@ export default async function SearchPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const sp = await searchParams;
-  const filters = parseFilters(sp);
+  const typed = locationQuery(sp);
+  const parsed = parseFilters(sp);
+
+  // A typed location wins over any area= already in the URL, because it is
+  // what the person just did. An unmatched query resolves to no towns,
+  // which lands on the zero-by-coverage screen with the query intact.
+  const match = typed === '' ? null : resolveLocation(typed, townClusterCount);
+  const filters = match === null ? parsed : { ...parsed, towns: match.towns };
   const pageParam = typeof sp['page'] === 'string' ? Number(sp['page']) : 1;
   const page = Number.isInteger(pageParam) && pageParam > 0 ? pageParam : 1;
 
@@ -37,7 +45,11 @@ export default async function SearchPage({
   const verdict = assessCoverage(all, filters, matched);
 
   const townLabel =
-    filters.towns.length === 0
+    match !== null && match.kind === 'none'
+      ? match.query
+      : match !== null
+        ? match.label
+        : filters.towns.length === 0
       ? 'Anywhere in Ghana'
       : filters.towns
           .map((s) => TOWN_BY_SLUG.get(s))

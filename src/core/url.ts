@@ -53,6 +53,12 @@ function flag(q: QueryLike, key: string): boolean {
   return read(q, key) === '1';
 }
 
+/** The raw thing the person typed into the location field, if anything. */
+export function locationQuery(q: QueryLike): string {
+  const raw = read(q, 'q');
+  return raw === null ? '' : raw.trim();
+}
+
 export function parseFilters(q: QueryLike): Filters {
   const seenRaw = read(q, 'seen');
   const seen: Freshness7or30 =

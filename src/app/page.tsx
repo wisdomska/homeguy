@@ -45,16 +45,31 @@ export default function LandingPage() {
               <label className={ui.overline} htmlFor="where">
                 {LANDING.whereLabel}
               </label>
-              <select className={ui.input} id="where" name="area" defaultValue="">
-                <option value="">{LANDING.wherePlaceholder}</option>
+              {/*
+                A text field, not a dropdown. A dropdown can only offer what
+                we already cover, which quietly tells someone that anywhere
+                missing from it does not exist. The datalist suggests the
+                towns we do track; typing anything else is allowed and lands
+                on the screen that says the gap is ours.
+              */}
+              <input
+                className={ui.input}
+                id="where"
+                name="q"
+                type="search"
+                list="towns"
+                autoComplete="off"
+                placeholder={LANDING.wherePlaceholder}
+              />
+              <datalist id="towns">
                 {townsWithCounts()
                   .sort((a, b) => b.count - a.count)
                   .map((t) => (
-                    <option key={t.slug} value={t.slug}>
-                      {t.name} — {t.sub} · {t.count}
+                    <option key={t.slug} value={t.name}>
+                      {t.sub} · {t.count}
                     </option>
                   ))}
-              </select>
+              </datalist>
             </div>
             <div className={styles.field}>
               <label className={ui.overline} htmlFor="lumpMax">

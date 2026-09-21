@@ -76,6 +76,17 @@ export function FilterControls({
   }, [draft, close, router, pendingCount, all.total]);
 
   const applied = useMemo(() => appliedChips(filters), [filters]);
+
+  // Everything except the location, so changing where you look does not
+  // silently throw away the advance and unit type you already chose.
+  const carried = useMemo(
+    () =>
+      toQuery({ ...filters, towns: [] })
+        .split('&')
+        .filter((pair) => pair.length > 0)
+        .map((pair) => pair.split('=').map(decodeURIComponent) as [string, string]),
+    [filters],
+  );
   const count = activeFilterCount(filters);
 
   const toggleAdvance = (m: number) =>
@@ -110,10 +121,33 @@ export function FilterControls({
     <>
       <div className={styles.bar}>
         <div className={styles.barInner}>
-          <a className={ui.chip} href="/start">
+          {/*
+            The location field lives on the results page too. Making someone
+            go back to the start flow to change where they are looking is
+            how you lose the search they already built.
+          */}
+          <form className={styles.where} action="/search" method="get" role="search">
+            <label className="sr-only" htmlFor="where-again">
+              Where are you looking?
+            </label>
             <PinIcon />
-            {townLabel}
-          </a>
+            <input
+              id="where-again"
+              className={styles.whereInput}
+              name="q"
+              type="search"
+              defaultValue={townLabel === 'Anywhere in Ghana' ? '' : townLabel}
+              placeholder="Any town in Ghana"
+              autoComplete="off"
+            />
+            {/* Carry the filters across, so retyping a place keeps them. */}
+            {carried.map(([k, v]) => (
+              <input key={k} type="hidden" name={k} value={v} />
+            ))}
+            <button className={styles.whereGo} type="submit">
+              Go
+            </button>
+          </form>
           <button className={count > 0 ? ui.chipOn : ui.chip} type="button" onClick={open}>
             {count > 0 ? <span className={ui.dot} /> : null}
             {FILTERS.title}
