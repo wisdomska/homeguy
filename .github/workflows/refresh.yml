@@ -1,0 +1,105 @@
+name: Refresh listings
+
+# Look for new listings, and re-check whether the ones we hold are gone.
+#
+# This lives in GitHub Actions rather than Vercel Cron because Vercel's
+# Hobby plan allows one cron run per day, and once an hour is the ask.
+# Actions runs scheduled workflows free on public repositories.
+#
+# Two separate jobs on purpose:
+#   ingest  — hourly, looks for listings that are new
+#   verify  — every 3 hours, walks a slice of the index and marks what has
+#             gone, which is what keeps "Seen 2 days ago" honest
+#
+# Both are polite by construction: they call our own endpoints, which go
+# through src/ingest/fetcher.ts — robots.txt honoured on every run, one
+# request at a time per host, 2s apart, hard stop on 403.
+
+on:
+  schedule:
+    # Hourly, at 17 past, to stay off the top-of-hour stampede that every
+    # other scheduled job on the platform joins.
+    - cron: '17 * * * *'
+    # Verification walks a slice every 3 hours.
+    - cron: '43 */3 * * *'
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Which environment to refresh
+        type: choice
+        options: [production, staging]
+        default: production
+
+concurrency:
+  # Never let two refreshes overlap: that would double the request rate at
+  # every source we touch, which is the one thing politeness rules exist to
+  # prevent.
+  group: refresh-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    name: Look for new listings
+    if: github.event.schedule != '43 */3 * * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Enqueue an ingest pass
+        env:
+          BASE: ${{ github.event.inputs.target == 'staging' && 'https://staging-homeguy.vercel.app' || 'https://homeguy.vercel.app' }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "CRON_SECRET is not set on this repository. Add it under"
+            echo "Settings > Secrets and variables > Actions, matching the"
+            echo "value in the Vercel project."
+            exit 1
+          fi
+          code=$(curl -sS -o /tmp/out.json -w '%{http_code}' \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            --max-time 300 "$BASE/api/cron/ingest")
+          echo "HTTP $code"
+          cat /tmp/out.json
+          echo
+          [ "$code" = "200" ] || exit 1
+
+      - name: Report any source whose yield collapsed
+        if: success()
+        run: |
+          # The canary: a source dropping more than half its yield day over
+          # day is a broken parser, not a quiet market. Silent parser rot is
+          # the main way aggregators die.
+          alerts=$(jq -r '.alerts // [] | length' /tmp/out.json 2>/dev/null || echo 0)
+          if [ "$alerts" != "0" ]; then
+            echo "::warning title=Ingestion yield alert::$(jq -c '.alerts' /tmp/out.json)"
+          else
+            echo "No yield alerts."
+          fi
+
+  verify:
+    name: Re-check listings we already hold
+    if: github.event.schedule == '43 */3 * * *' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Walk a slice of the index
+        env:
+          BASE: ${{ github.event.inputs.target == 'staging' && 'https://staging-homeguy.vercel.app' || 'https://homeguy.vercel.app' }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "CRON_SECRET is not set on this repository."
+            exit 1
+          fi
+          # A slice per run rather than the whole index, so no host ever
+          # sees a burst. The response carries the next offset.
+          offset=0
+          for i in 1 2 3 4 5; do
+            code=$(curl -sS -o /tmp/v.json -w '%{http_code}' \
+              -H "Authorization: Bearer $CRON_SECRET" \
+              --max-time 120 "$BASE/api/cron/verify?offset=$offset")
+            [ "$code" = "200" ] || { echo "HTTP $code"; cat /tmp/v.json; exit 1; }
+            jq -c '{checkedFrom, clusters, listings, live, gone, skipped}' /tmp/v.json
+            offset=$(jq -r '.nextOffset' /tmp/v.json)
+            [ "$offset" = "0" ] && { echo "Reached the end of the index."; break; }
+          done
