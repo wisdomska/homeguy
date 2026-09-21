@@ -23,17 +23,25 @@
   }
 }
 
+/*
+ * The map renders wherever the toggle is offered. It was desktop-only,
+ * which made the mobile pill a control that did nothing — worse than no
+ * control at all. On a phone it sits below the list rather than beside it.
+ */
 .panel {
-  display: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+  min-width: 0;
+  height: 60vh;
+  padding: var(--space-4) 0 92px;
 }
 
 @media (min-width: 1024px) {
   .panel {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
     flex: 1 1 45%;
-    min-width: 0;
+    width: auto;
     position: sticky;
     top: 132px;
     height: calc(100vh - 160px);

@@ -6,6 +6,7 @@
 
 .split {
   display: flex;
+  flex-wrap: wrap;
   min-height: 0;
   max-width: 1440px;
   width: 100%;
@@ -21,6 +22,7 @@
 }
 @media (min-width: 1024px) {
   .split {
+    flex-wrap: nowrap;
     padding: 0 var(--space-8);
   }
 }

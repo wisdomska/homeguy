@@ -12,9 +12,28 @@ export function ServiceWorker() {
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
     const onLoad = () => {
-      navigator.serviceWorker.register('/sw.js').catch(() => {
-        // A failed registration is not an error the user needs to see.
-      });
+      navigator.serviceWorker
+        .register('/sw.js')
+        .then(() => navigator.serviceWorker.ready)
+        .then(() => {
+          // Cache the page we are on now, rather than waiting for a second
+          // visit that a dropped connection may never allow.
+          const tell = () => {
+            const active = navigator.serviceWorker.controller;
+            if (active !== null) {
+              active.postMessage({ type: 'cache-page', url: window.location.href });
+            }
+          };
+          tell();
+          // On a first visit the worker only takes control after claim(),
+          // which can land after ready resolves.
+          navigator.serviceWorker.addEventListener('controllerchange', tell, {
+            once: true,
+          });
+        })
+        .catch(() => {
+          // A failed registration is not an error the user needs to see.
+        });
     };
     if (document.readyState === 'complete') onLoad();
     else window.addEventListener('load', onLoad);

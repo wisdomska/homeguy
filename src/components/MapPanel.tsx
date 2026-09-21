@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { RESULTS } from '@/core/copy';
 import ui from './ui.module.css';
 import styles from './MapPanel.module.css';
@@ -27,6 +27,15 @@ export interface Pin {
  */
 export function MapPanel({ pins, total }: { pins: Pin[]; total: number }) {
   const [on, setOn] = useState(false);
+  const panelRef = useRef<HTMLElement>(null);
+
+  // On a phone the map opens below the list. A "Show map" button that
+  // leaves you looking at the same cards has not shown you the map — and
+  // the tiles, being lazy, would not even be fetched until you scrolled.
+  useEffect(() => {
+    if (!on) return;
+    panelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [on]);
 
   return (
     <>
@@ -42,7 +51,7 @@ export function MapPanel({ pins, total }: { pins: Pin[]; total: number }) {
       </button>
 
       {on ? (
-        <aside className={styles.panel} aria-label="Map of results">
+        <aside ref={panelRef} className={styles.panel} aria-label="Map of results">
           <div className={styles.canvas}>
             <img
               className={styles.tiles}

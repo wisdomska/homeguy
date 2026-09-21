@@ -18,3 +18,4 @@ coverage/
 
 .vercel
 .env*
+scratch/
