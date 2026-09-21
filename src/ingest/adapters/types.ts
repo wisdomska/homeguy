@@ -46,6 +46,8 @@ export interface RawListing {
 
   directions: string | null;
   photoCount: number;
+  /** The source's own image URL. We reference it; we never copy it. */
+  thumbnailUrl: string | null;
   firstSeenAt: Date | null;
 }
 
@@ -74,6 +76,7 @@ export function emptyRawListing(sourceId: string, sourceUrl: string): RawListing
     gated: null,
     directions: null,
     photoCount: 0,
+    thumbnailUrl: null,
     firstSeenAt: null,
   };
 }
