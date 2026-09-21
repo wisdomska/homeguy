@@ -39,7 +39,13 @@ const DEFAULT_MAX_PAGES = 5;
 export async function runSourceIngest(
   db: PrismaClient,
   sourceId: string,
-  options: { maxPages?: number; fetchImpl?: typeof fetch; now?: Date } = {},
+  options: {
+    maxPages?: number;
+    fetchImpl?: typeof fetch;
+    now?: Date;
+    /** Region slugs to walk, one at a time. Omit for the national feed. */
+    regions?: string[];
+  } = {},
 ): Promise<SourceRunResult> {
   const startedAt = Date.now();
   const cfg = API_SOURCES[sourceId];
@@ -60,9 +66,22 @@ export async function runSourceIngest(
   let pagesFetched = 0;
   let error: string | null = null;
 
+  // Which regions to walk, one at a time.
+  //
+  // Walking the national "newest" feed returns whatever was posted in the
+  // last hour, which is overwhelmingly Greater Accra — the first pass left
+  // Ashanti with ten listings against the hundreds Jiji actually holds.
+  // Scoping by region is the only way coverage reflects where people are
+  // looking rather than where posting happens to be busiest.
+  const scopes: Array<string | undefined> =
+    options.regions === undefined || options.regions.length === 0
+      ? [undefined]
+      : options.regions;
+
   try {
+    for (const scope of scopes) {
     for (let page = 1; page <= maxPages; page += 1) {
-      const url = listingApiUrl(cfg, page);
+      const url = listingApiUrl(cfg, page, scope);
       const res = await fetchPolitely(url, { fetchImpl: options.fetchImpl, maxRetries: 2 });
 
       if (!res.ok || res.body === null) {
@@ -77,6 +96,7 @@ export async function runSourceIngest(
       if (parsed.listings.length === 0) break;
       collected.push(...parsed.listings);
       if (parsed.nextUrl === null) break;
+    }
     }
   } catch (err) {
     error = err instanceof Error ? err.message : String(err);

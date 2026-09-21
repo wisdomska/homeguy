@@ -7,15 +7,18 @@ import { formatMoney } from '@/core/money';
 import { unitTypeLabel } from '@/core/copy';
 import { THIN_TOWN_THRESHOLD } from '@/core/coverage';
 import { sortResults } from '@/core/filters';
-import { REGION_BY_SLUG, TOWNS, TOWN_BY_SLUG, clustersFor, sourceNameMap, nameFrom } from '@/core';
+import { REGION_BY_SLUG, clustersFor, sourceNameMap, nameFrom, townsWithCounts } from '@/core';
 import ui from '@/components/ui.module.css';
 import styles from '../rent.module.css';
 
 export const revalidate = 600;
 
-export function generateStaticParams() {
-  return TOWNS.map((t) => ({ region: t.regionId, town: t.slug }));
-}
+/*
+ * No generateStaticParams here on purpose. Towns are discovered by
+ * ingestion — Weija, Kumasi Metropolitan and Adjiriganor all arrived from
+ * real listings and none existed at build time. Prerendering a fixed list
+ * meant every town we actually found returned 404.
+ */
 
 export async function generateMetadata({
   params,
@@ -23,9 +26,9 @@ export async function generateMetadata({
   params: Promise<{ region: string; town: string }>;
 }): Promise<Metadata> {
   const { town } = await params;
-  const t = TOWN_BY_SLUG.get(town);
+  const t = (await townsWithCounts()).find((x) => x.slug === town);
   if (t === undefined) return { title: 'Not found' };
-  const n = (await clustersFor([town])).length;
+  const n = t.count;
   return {
     title: `Rooms and apartments to rent in ${t.name}`,
     description:
@@ -47,7 +50,9 @@ export default async function TownPage({
   params: Promise<{ region: string; town: string }>;
 }) {
   const { region, town } = await params;
-  const t = TOWN_BY_SLUG.get(town);
+  // Looked up in the index, not in the static geography list: the town may
+  // have been created by an ingest pass an hour ago.
+  const t = (await townsWithCounts()).find((x) => x.slug === town);
   const r = REGION_BY_SLUG.get(region);
   if (t === undefined || r === undefined || t.regionId !== region) notFound();
 

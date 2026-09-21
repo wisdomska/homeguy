@@ -117,50 +117,110 @@ async function findClusterFor(
 ): Promise<string | null> {
   if (raw.unitType === null) return null;
 
-  const candidates = await db.cluster.findMany({
-    where: { townId, unitType: raw.unitType },
-    select: { id: true, slug: true, listings: { select: { rawTitle: true } } },
-    take: 200,
-  });
-  if (candidates.length === 0) return null;
+  const town = await db.town.findUnique({ where: { id: townId }, select: { name: true } });
+  const townName = town === null ? '' : town.name;
 
-  const mine = titleKey(raw.rawTitle);
+  const mine = titleKey(raw.rawTitle, townName);
+  // A title with nothing distinctive left cannot be matched on. Starting a
+  // new cluster is the safe answer: showing one room twice is a smaller
+  // error than merging two rooms and inventing a price range between them.
   if (mine.length < 3) return null;
 
+  const candidates = await db.cluster.findMany({
+    where: { townId, unitType: raw.unitType },
+    select: {
+      id: true,
+      rentMin: true,
+      rentMax: true,
+      listings: { select: { rawTitle: true } },
+    },
+    take: 300,
+  });
+
   for (const c of candidates) {
+    // A fourfold price gap is a different building, not a negotiation.
+    if (raw.monthlyRent !== null && c.rentMin !== null && c.rentMax !== null) {
+      const lo = Math.min(raw.monthlyRent, c.rentMin);
+      const hi = Math.max(raw.monthlyRent, c.rentMax);
+      if (lo > 0 && hi / lo > MAX_RENT_RATIO) continue;
+    }
     for (const l of c.listings) {
-      const theirs = titleKey(l.rawTitle);
+      const theirs = titleKey(l.rawTitle, townName);
       if (theirs.length < 3) continue;
-      if (overlap(mine, theirs) >= 0.82) return c.id;
+      const shared = mine.filter((w) => theirs.includes(w)).length;
+      // Both a strong proportion AND enough distinctive words in common, so
+      // one shared name can never merge two unrelated houses.
+      if (shared >= 3 && overlap(mine, theirs) >= 0.6) return c.id;
     }
   }
   return null;
 }
 
-/** The distinctive words in a title, minus the boilerplate every ad shares. */
-function titleKey(title: string): string[] {
-  const stop = new Set([
-    'for','rent','in','the','a','an','and','to','at','with','of','is','new',
-    'apartment','house','room','bedroom','bdrm','self','contain','furnished',
-    'spacious','executive','nice','newly','built','modern','luxury',
-  ]);
+/**
+ * The distinctive words in a title, minus everything that appears in every
+ * advert from the same town.
+ *
+ * This list is longer than it looks like it needs to be, and that is the
+ * point. Jiji titles are formulaic — "2bdrm Apartment in Born To Pray
+ * Estate, Ejisu-Juaben Municipal for rent" — so once the property nouns and
+ * the place name are gone, what remains is the only thing that actually
+ * identifies a building. An earlier version kept "estate", "kumasi" and
+ * "metropolitan" as signal and merged 31 unrelated houses, priced from
+ * GH¢2,200 to GH¢25,000 a month, into a single cluster.
+ */
+const TITLE_STOPWORDS = new Set([
+  // grammar
+  'for','rent','in','the','a','an','and','to','at','with','of','is','on','by',
+  // property nouns
+  'apartment','apartments','house','houses','room','rooms','flat','flats',
+  'bedroom','bedrooms','bdrm','bdrms','self','contain','contained','studio',
+  'chamber','hall','mansion','duplex','townhouse','villa','compound','unit',
+  // marketing
+  'new','newly','built','modern','luxury','luxurious','executive','spacious',
+  'nice','beautiful','lovely','affordable','cheap','quality','standard',
+  'furnished','unfurnished','serviced','available','now','clean','neat',
+  // trade words that name the seller, not the place
+  'estate','estates','agency','agencies','properties','property','realty',
+  'real','ltd','limited','company','enterprise','ventures','homes','group',
+]);
+
+function titleKey(title: string, townName: string): string[] {
+  // Words from the town's own name are in every title from that town.
+  const townWords = new Set(
+    townName.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').split(/s+/).filter(Boolean),
+  );
   return [
     ...new Set(
       title
         .toLowerCase()
         .replace(/[^a-z0-9 ]+/g, ' ')
-        .split(/\s+/)
-        .filter((w) => w.length > 2 && !stop.has(w)),
+        .split(/s+/)
+        .filter(
+          (w) =>
+            w.length > 2 &&
+            !TITLE_STOPWORDS.has(w) &&
+            !townWords.has(w) &&
+            !/^d+$/.test(w),
+        ),
     ),
   ];
 }
 
+/** Jaccard. Using min() as the denominator let a two-word title match anything. */
 function overlap(a: string[], b: string[]): number {
   if (a.length === 0 || b.length === 0) return 0;
   const setB = new Set(b);
   const shared = a.filter((w) => setB.has(w)).length;
-  return shared / Math.min(a.length, b.length);
+  const union = new Set([...a, ...b]).size;
+  return union === 0 ? 0 : shared / union;
 }
+
+/**
+ * Two rents this far apart are not two agents disagreeing about one room.
+ * Contract C allows the price to differ, and it routinely does — but a
+ * fourfold gap is a different building, not a negotiation.
+ */
+const MAX_RENT_RATIO = 3;
 
 /** Recompute every derived money field from the cluster's live listings. */
 export async function recomputeCluster(db: PrismaClient, clusterId: string): Promise<void> {

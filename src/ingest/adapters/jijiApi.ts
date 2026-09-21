@@ -46,13 +46,28 @@ export const TONATON_API: ApiSourceConfig = {
   slug: 'houses-apartments-for-rent',
 };
 
-export function listingApiUrl(cfg: ApiSourceConfig, page: number): string {
+/**
+ * One page of listings, optionally scoped to a region.
+ *
+ * Scoping matters more than it looks. Walking the national "newest" feed
+ * returns whatever was posted most recently, which is overwhelmingly
+ * Greater Accra — Ashanti came out of the first pass with ten listings
+ * while Jiji itself holds hundreds. Region by region is the only way
+ * coverage reflects the country rather than the posting rate of its
+ * capital.
+ */
+export function listingApiUrl(
+  cfg: ApiSourceConfig,
+  page: number,
+  regionSlug?: string,
+): string {
   const p = new URLSearchParams({
     slug: cfg.slug,
     init_page: page <= 1 ? 'true' : 'false',
     webp: 'true',
     sort: 'new',
   });
+  if (regionSlug !== undefined) p.set('region_slug', regionSlug);
   if (page > 1) p.set('page', String(page));
   return `${cfg.origin}/api_web/v1/listing?${p.toString()}`;
 }

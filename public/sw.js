@@ -14,17 +14,23 @@
  * the radio off.
  */
 
-const VERSION = 'hg-v5';
+const VERSION = 'hg-v6';
 const SHELL = `${VERSION}-shell`;
 const PAGES = `${VERSION}-pages`;
 
-const SHELL_ASSETS = ['/', '/fonts/space-grotesk-latin.woff2', '/homeguy-logo.svg'];
+// Only genuinely immutable things belong here. The landing page carries
+// live counts and is served network-first like every other page — caching
+// it first froze the index a visitor saw at their first ever visit.
+const SHELL_ASSETS = ['/fonts/space-grotesk-latin.woff2', '/homeguy-logo.svg'];
+
+/** Kept for the offline fallback, refreshed on every successful visit. */
+const OFFLINE_FALLBACK = '/';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches
       .open(SHELL)
-      .then((c) => c.addAll(SHELL_ASSETS))
+      .then((c) => c.addAll([...SHELL_ASSETS, OFFLINE_FALLBACK]))
       .then(() => self.skipWaiting())
       .catch(() => self.skipWaiting()),
   );
@@ -50,7 +56,11 @@ self.addEventListener('activate', (event) => {
  */
 function isPage(url, request) {
   if (request !== undefined && request.mode === 'navigate') return true;
-  return url.pathname === '/search' || url.pathname.startsWith('/place/');
+  return (
+    url.pathname === '/' ||
+    url.pathname === '/search' ||
+    url.pathname.startsWith('/place/')
+  );
 }
 
 /*
@@ -125,11 +135,7 @@ self.addEventListener('fetch', (event) => {
   // Hashed build output is immutable, and a cached page is useless without
   // it: the HTML arrives, React never hydrates, and the saved state the user
   // came back for does not render.
-  if (
-    SHELL_ASSETS.includes(url.pathname) ||
-    url.pathname.startsWith('/fonts/') ||
-    url.pathname.startsWith('/_next/static/')
-  ) {
+  if (SHELL_ASSETS.includes(url.pathname) || url.pathname.startsWith('/_next/static/')) {
     event.respondWith(
       caches.match(req).then((hit) => {
         if (hit !== undefined) return hit;
@@ -156,7 +162,7 @@ self.addEventListener('fetch', (event) => {
         .catch(() =>
           caches.match(req, { ignoreVary: true }).then((hit) => {
             if (hit !== undefined) return hit;
-            return caches.match('/', { ignoreVary: true }).then((shell) => {
+            return caches.match(OFFLINE_FALLBACK, { ignoreVary: true }).then((shell) => {
               if (shell !== undefined) return shell;
               return new Response('Offline', { status: 503 });
             });
