@@ -18,7 +18,9 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_DATABASE_URL")
+  // Neon names the non-pooled connection DATABASE_URL_UNPOOLED. Migrations
+  // must not go through pgbouncer, so they use that one.
+  directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
 enum UnitType {

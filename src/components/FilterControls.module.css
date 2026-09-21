@@ -177,9 +177,16 @@
   min-width: 0;
 }
 
+/*
+ * The input fills the pill rather than sitting inside it at text height.
+ * A 19px tap target inside a 44px container looks fine and is not one:
+ * the thing a thumb has to hit is the input, not the border around it.
+ */
 .whereInput {
   flex: 1;
   min-width: 0;
+  align-self: stretch;
+  min-height: var(--target);
   border: none;
   outline: none;
   background: transparent;
@@ -190,7 +197,8 @@
 
 .whereGo {
   flex: none;
-  min-height: 32px;
+  min-height: var(--target);
+  min-width: 44px;
   padding: 0 12px;
   border: 1px solid var(--button-primary-edge);
   border-radius: var(--radius-pill);
