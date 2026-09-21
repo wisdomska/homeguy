@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { matching, splitByBudget } from '@/core/filters';
 import { parseFilters } from '@/core/url';
-import { clustersFor } from '@/core/repo';
+import { clustersFor } from '@/core';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,10 +13,10 @@ export const dynamic = 'force-dynamic';
  * and putting an estimate on that button would be putting a number on
  * screen that is not real. So it is one small request instead.
  */
-export function GET(request: Request) {
+export async function GET(request: Request) {
   const url = new URL(request.url);
   const filters = parseFilters(url.searchParams);
-  const all = clustersFor(filters.towns);
+  const all = await clustersFor(filters.towns);
   const matched = matching(all, filters);
   const { affordable } = splitByBudget(matched, filters.lumpMax);
   return NextResponse.json(

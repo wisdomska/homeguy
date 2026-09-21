@@ -1,12 +1,12 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { REGIONS, regionClusterCount, REGION_BY_SLUG, townsWithCounts } from '@/core/repo';
+import { REGIONS, REGION_BY_SLUG, regionsWithCoverage, townsWithCounts } from '@/core';
 import { THIN_TOWN_THRESHOLD } from '@/core/coverage';
 import ui from '@/components/ui.module.css';
 import styles from './rent.module.css';
 
-export const dynamic = 'force-static';
+export const revalidate = 600;
 
 export function generateStaticParams() {
   return REGIONS.map((r) => ({ region: r.slug }));
@@ -20,7 +20,7 @@ export async function generateMetadata({
   const { region } = await params;
   const r = REGION_BY_SLUG.get(region);
   if (r === undefined) return { title: 'Not found' };
-  const n = regionClusterCount(region);
+  const n = (await regionsWithCoverage()).find((x) => x.slug === region)?.count ?? 0;
   return {
     title: `Rentals in ${r.name}`,
     description:
@@ -40,10 +40,10 @@ export default async function RegionPage({
   const r = REGION_BY_SLUG.get(region);
   if (r === undefined) notFound();
 
-  const towns = townsWithCounts()
+  const towns = (await townsWithCounts())
     .filter((t) => t.regionId === region)
     .sort((a, b) => b.count - a.count);
-  const total = regionClusterCount(region);
+  const total = towns.reduce((n, t) => n + t.count, 0);
 
   return (
     <div className={`${styles.wrap} ${ui.pageBottom}`}>

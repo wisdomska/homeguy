@@ -7,18 +7,11 @@ import { formatMoney } from '@/core/money';
 import { unitTypeLabel } from '@/core/copy';
 import { THIN_TOWN_THRESHOLD } from '@/core/coverage';
 import { sortResults } from '@/core/filters';
-import {
-  REGION_BY_SLUG,
-  TOWNS,
-  TOWN_BY_SLUG,
-  clustersInTown,
-  sourceName,
-  townClusterCount,
-} from '@/core/repo';
+import { REGION_BY_SLUG, TOWNS, TOWN_BY_SLUG, clustersFor, sourceNameMap, nameFrom } from '@/core';
 import ui from '@/components/ui.module.css';
 import styles from '../rent.module.css';
 
-export const revalidate = 3600;
+export const revalidate = 600;
 
 export function generateStaticParams() {
   return TOWNS.map((t) => ({ region: t.regionId, town: t.slug }));
@@ -32,7 +25,7 @@ export async function generateMetadata({
   const { town } = await params;
   const t = TOWN_BY_SLUG.get(town);
   if (t === undefined) return { title: 'Not found' };
-  const n = townClusterCount(town);
+  const n = (await clustersFor([town])).length;
   return {
     title: `Rooms and apartments to rent in ${t.name}`,
     description:
@@ -58,7 +51,8 @@ export default async function TownPage({
   const r = REGION_BY_SLUG.get(region);
   if (t === undefined || r === undefined || t.regionId !== region) notFound();
 
-  const all = sortResults(clustersInTown(town), [town]);
+  const all = sortResults(await clustersFor([town]), [town]);
+  const sourceName = nameFrom(await sourceNameMap());
   const count = all.length;
   const shown = all.slice(0, 12);
 

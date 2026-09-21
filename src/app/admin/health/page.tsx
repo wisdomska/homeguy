@@ -4,7 +4,8 @@ import { mergeLogEntries } from '@/ingest/cluster';
 import { queue } from '@/ingest/queue';
 import { eventCounts, zeroResultsByTown } from '@/lib/eventStore';
 import { openReports } from '@/lib/reports';
-import { REGIONS, regionClusterCount, totalClusterCount } from '@/core/repo';
+import { regionsWithCoverage, totalClusterCount } from '@/core';
+import { db, hasDatabase } from '@/core/db';
 import ui from '@/components/ui.module.css';
 import styles from './health.module.css';
 
@@ -25,13 +26,27 @@ export const metadata = {
  *
  * Access control: this route is behind Basic auth in middleware.ts.
  */
-export default function HealthPage() {
+export default async function HealthPage() {
   const alerts = canary(SOURCE_CONFIG.map((s) => s.id));
   const counts = eventCounts();
   const zeros = zeroResultsByTown();
   const runs = allRuns().slice(0, 20);
   const merges = mergeLogEntries(20);
   const reports = openReports();
+  const regionCounts = await regionsWithCoverage();
+  const total = await totalClusterCount();
+
+  // Read straight from the index rather than from any intent table.
+  const stats = hasDatabase()
+    ? {
+        listings: await db().listing.count({ where: { goneAt: null } }),
+        gone: await db().listing.count({ where: { goneAt: { not: null } } }),
+        withTotal: await db().cluster.count({ where: { totalToMoveInMin: { not: null } } }),
+        multiSource: await db().cluster.count({ where: { sourceCount: { gt: 1 } } }),
+        withPhoto: await db().cluster.count({ where: { thumbnailUrl: { not: null } } }),
+        townsCovered: await db().town.count({ where: { clusters: { some: {} } } }),
+      }
+    : null;
 
   return (
     <div className={styles.wrap}>
@@ -51,6 +66,35 @@ export default function HealthPage() {
         </section>
       ) : (
         <p className={ui.caption}>No source has dropped more than 50% day over day.</p>
+      )}
+
+      {stats === null ? null : (
+        <section>
+          <h2 className={ui.h3}>The index</h2>
+          <table className={styles.table}>
+            <tbody>
+              <tr><td>Clusters (live)</td><td className="num">{total}</td></tr>
+              <tr><td>Listings (live)</td><td className="num">{stats.listings}</td></tr>
+              <tr><td>Listings marked gone</td><td className="num">{stats.gone}</td></tr>
+              <tr><td>Towns with coverage</td><td className="num">{stats.townsCovered}</td></tr>
+              <tr><td>Clusters with a photo</td><td className="num">{stats.withPhoto}</td></tr>
+              <tr><td>Clusters across more than one source</td><td className="num">{stats.multiSource}</td></tr>
+              <tr>
+                <td><strong>Clusters with a cash-to-move-in figure</strong></td>
+                <td className="num">
+                  <strong>{stats.withTotal}</strong>{' '}
+                  ({total === 0 ? 0 : Math.round((stats.withTotal / total) * 100)}%)
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <p className={ui.caption}>
+            That last row is the data-quality number to watch. Jiji and Tonaton publish a
+            monthly rent and no advance term, so the product&apos;s headline figure cannot be
+            computed for most of the index. It rises only as agents supply terms through the
+            paste and agent-direct routes.
+          </p>
+        </section>
       )}
 
       <section>
@@ -127,10 +171,10 @@ export default function HealthPage() {
             </tr>
           </thead>
           <tbody>
-            {REGIONS.map((r) => (
+            {regionCounts.map((r) => (
               <tr key={r.slug}>
                 <td>{r.name}</td>
-                <td className="num">{regionClusterCount(r.slug)}</td>
+                <td className="num">{r.count}</td>
               </tr>
             ))}
             <tr>
@@ -138,7 +182,7 @@ export default function HealthPage() {
                 <strong>Total</strong>
               </td>
               <td className="num">
-                <strong>{totalClusterCount()}</strong>
+                <strong>{total}</strong>
               </td>
             </tr>
           </tbody>

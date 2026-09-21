@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { clustersByIds } from '@/core/repo';
+import { clustersByIds } from '@/core';
 import { reverify } from '@/ingest/verify';
 import { rateLimit } from '@/lib/rateLimit';
 
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'bad_request' }, { status: 400 });
   }
 
-  const clusters = clustersByIds(ids.slice(0, MAX_PER_CALL));
+  const clusters = await clustersByIds(ids.slice(0, MAX_PER_CALL));
   const results = await reverify(clusters);
 
   return NextResponse.json({

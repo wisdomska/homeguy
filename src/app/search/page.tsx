@@ -4,11 +4,12 @@ import { unitTypeLabel } from '@/core/copy';
 import { formatMoney } from '@/core/money';
 import { locationQuery, parseFilters, searchHref, toQuery } from '@/core/url';
 import { resolveLocation } from '@/core/resolveLocation';
-import { activeFilterCount, matching, sortResults, splitByBudget } from '@/core/filters';
+import { activeFilterCount, matching, sortResults, splitByBudget, type Filters } from '@/core/filters';
+import type { ClusterView, UnitType } from '@/core/types';
 import { assessCoverage, findBlockingFilter, nearbyCoverage } from '@/core/coverage';
 import { nearMisses } from '@/core/nearmiss';
 import { buildCard } from '@/core/cardModel';
-import { clustersFor, sourceName, townClusterCount, TOWN_BY_SLUG } from '@/core/repo';
+import { clustersFor, sourceNameMap, nameFrom, townCountMap, TOWN_BY_SLUG } from '@/core';
 import { ResultCard } from '@/components/ResultCard';
 import { FilterControls } from '@/components/FilterControls';
 import { MapPanel } from '@/components/MapPanel';
@@ -34,7 +35,9 @@ export default async function SearchPage({
   // A typed location wins over any area= already in the URL, because it is
   // what the person just did. An unmatched query resolves to no towns,
   // which lands on the zero-by-coverage screen with the query intact.
-  const match = typed === '' ? null : resolveLocation(typed, townClusterCount);
+  const counts = await townCountMap();
+  const countFor = (slug: string) => counts.get(slug) ?? 0;
+  const match = typed === '' ? null : resolveLocation(typed, countFor);
   const filters = match === null ? parsed : { ...parsed, towns: match.towns };
   const pageParam = typeof sp['page'] === 'string' ? Number(sp['page']) : 1;
   const page = Number.isInteger(pageParam) && pageParam > 0 ? pageParam : 1;
@@ -45,7 +48,9 @@ export default async function SearchPage({
   // which is the single most damaging thing this product could say.
   const unresolved = match !== null && match.kind === 'none';
 
-  const all = unresolved ? [] : clustersFor(filters.towns);
+  const sourceNames = await sourceNameMap();
+  const sourceName = nameFrom(sourceNames);
+  const all = unresolved ? [] : await clustersFor(filters.towns);
   const matched = unresolved ? [] : sortResults(matching(all, filters), filters.towns);
   const { affordable, over } = splitByBudget(matched, filters.lumpMax);
   const verdict = assessCoverage(all, filters, matched);
@@ -244,10 +249,10 @@ export default async function SearchPage({
                   ? match.suggestions.map((sg) => ({
                       townSlug: sg.slug,
                       townName: sg.name,
-                      count: townClusterCount(sg.slug),
+                      count: countFor(sg.slug),
                       distanceKm: null,
                     }))
-                  : nearbyCoverage(clustersFor([]), filters.towns)
+                  : nearbyCoverage(all, filters.towns)
                 ).map((n) => (
                   <li key={n.townSlug}>
                     <Link className={styles.nearbyRow} href={`/search?area=${n.townSlug}`}>
@@ -286,21 +291,19 @@ export default async function SearchPage({
 }
 
 /** Facet counts, computed on the server over the chosen towns. */
-function facets(
-  all: ReturnType<typeof clustersFor>,
-  filters: ReturnType<typeof parseFilters>,
-) {
+function facets(all: ClusterView[], filters: Filters) {
   const advance = [1, 3, 6, 12, 24].map((a) => ({
     months: a,
     count: all.filter((c) => c.listings.some((l) => l.advanceMonths === a)).length,
   }));
-  const types = [...new Set(all.map((c) => c.unitType))].map((t) => ({
+  const types: UnitType[] = [...new Set(all.map((c) => c.unitType))];
+  const typeFacets = types.map((t) => ({
     type: t,
     label: unitTypeLabel(t),
     count: all.filter((c) => c.unitType === t).length,
   }));
   const notStated = all.filter((c) => c.advanceMonthsMin === null).length;
-  return { advance, types, notStated, total: all.length, filters };
+  return { advance, types: typeFacets, notStated, total: all.length, filters };
 }
 
 function Divider({ label }: { label: string }) {

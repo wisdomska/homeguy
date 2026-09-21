@@ -18,6 +18,8 @@ export interface RawListing {
   rawBody: string;
 
   townHint: string | null;
+  /** The region the source named, so a new town lands in the right one. */
+  regionHint: string | null;
   landmarkHint: string | null;
   approxDistanceM: number | null;
 
@@ -58,6 +60,7 @@ export function emptyRawListing(sourceId: string, sourceUrl: string): RawListing
     rawTitle: '',
     rawBody: '',
     townHint: null,
+    regionHint: null,
     landmarkHint: null,
     approxDistanceM: null,
     unitType: null,

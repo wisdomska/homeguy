@@ -1,16 +1,13 @@
 import Link from 'next/link';
 import { LANDING } from '@/core/copy';
-import {
-  REGIONS,
-  regionsWithCoverage,
-  totalClusterCount,
-  townsWithCounts,
-} from '@/core/repo';
+import { REGIONS, regionsWithCoverage, totalClusterCount, townsWithCounts } from '@/core';
 import { THIN_TOWN_THRESHOLD } from '@/core/coverage';
 import ui from '@/components/ui.module.css';
 import styles from './landing.module.css';
 
-export const dynamic = 'force-static';
+// Real counts change with every ingest pass, so this is revalidated
+// rather than frozen at build time.
+export const revalidate = 300;
 
 /**
  * LANDING. Ported from HomeGuy Web.dc.html:72-142.
@@ -19,13 +16,14 @@ export const dynamic = 'force-static';
  * uneven and the page says so in the second stat rather than hiding it
  * behind a rounded total.
  */
-export default function LandingPage() {
-  const total = totalClusterCount();
-  const regions = regionsWithCoverage();
+export default async function LandingPage() {
+  const total = await totalClusterCount();
+  const regions = await regionsWithCoverage();
+  const towns = await townsWithCounts();
   const covered = regions.filter((r) => r.count > 0);
   const empty = regions.filter((r) => r.count === 0);
   const thinnest = covered[covered.length - 1];
-  const topTowns = townsWithCounts()
+  const topTowns = towns
     .filter((t) => t.count > 0)
     .sort((a, b) => b.count - a.count)
     .slice(0, 8);
@@ -62,7 +60,7 @@ export default function LandingPage() {
                 placeholder={LANDING.wherePlaceholder}
               />
               <datalist id="towns">
-                {townsWithCounts()
+                {towns
                   .sort((a, b) => b.count - a.count)
                   .map((t) => (
                     <option key={t.slug} value={t.name}>
@@ -148,12 +146,11 @@ export default function LandingPage() {
             tenancy. Every listing links back to the source it came from.
           </p>
           <p className={ui.caption}>
-            This deployment runs on a development dataset: seventeen hand-authored clusters
-            from the design brief plus a deterministic generator, so that every count on
-            every screen is a real count of rows. No live source is enabled yet — the
-            ingestion adapters run against saved fixtures. See{' '}
-            <Link href="/bot">/bot</Link> for how HomeGuyBot identifies itself and how to
-            opt out.
+            Listings are indexed from public adverts on Jiji and Tonaton, refreshed hourly
+            and re-checked through the day. Photos stay on the source&apos;s own servers and
+            every card links back to the advert it came from. See{' '}
+            <Link href="/bot">/bot</Link> for how HomeGuyBot identifies itself and how a
+            site can opt out.
           </p>
         </footer>
       </div>

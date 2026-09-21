@@ -1,7 +1,7 @@
 import { StartFlow } from '@/components/StartFlow';
-import { totalClusterCount, townsWithCounts, regionsWithCoverage } from '@/core/repo';
+import { totalClusterCount, townsWithCounts, regionsWithCoverage } from '@/core';
 
-export const dynamic = 'force-static';
+export const revalidate = 300;
 
 export const metadata = {
   title: 'Work out what you can actually raise',
@@ -16,18 +16,23 @@ export const metadata = {
  * specific ("Reaches 38 of the 486 rooms at GH¢800 a month") instead of
  * abstract.
  */
-export default function StartPage() {
+export default async function StartPage() {
+  const [total, towns, regions] = await Promise.all([
+    totalClusterCount(),
+    townsWithCounts(),
+    regionsWithCoverage(),
+  ]);
   return (
     <StartFlow
-      total={totalClusterCount()}
-      towns={townsWithCounts().map((t) => ({
+      total={total}
+      towns={towns.map((t) => ({
         slug: t.slug,
         name: t.name,
         sub: t.sub,
         count: t.count,
         regionSlug: t.regionId,
       }))}
-      regions={regionsWithCoverage().map((r) => ({
+      regions={regions.map((r) => ({
         slug: r.slug,
         name: r.name,
         count: r.count,

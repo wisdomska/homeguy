@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { buildCard } from '@/core/cardModel';
-import { clustersByIds, sourceName } from '@/core/repo';
+import { clustersByIds, sourceNameMap, nameFrom } from '@/core';
 import { formatMoney } from '@/core/money';
 import { METER_LABEL, WATER_LABEL, unitTypeLabel } from '@/core/copy';
 
@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
  * browser (IndexedDB), so they need to hydrate cluster detail by id. This
  * returns exactly what those screens render and nothing more.
  */
-export function GET(request: Request) {
+export async function GET(request: Request) {
   const url = new URL(request.url);
   const ids = (url.searchParams.get('ids') ?? '')
     .split(',')
@@ -19,7 +19,8 @@ export function GET(request: Request) {
     .filter((s) => s.length > 0)
     .slice(0, 100);
 
-  const clusters = clustersByIds(ids);
+  const clusters = await clustersByIds(ids);
+  const sourceName = nameFrom(await sourceNameMap());
 
   return NextResponse.json({
     clusters: clusters.map((c) => ({

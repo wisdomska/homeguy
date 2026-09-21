@@ -6,7 +6,7 @@ import { formatMoney, totalToMoveIn } from '@/core/money';
 import { freshness } from '@/core/freshness';
 import { gapsFor, headlineListing, rentSpread } from '@/core/derive';
 import { planFor } from '@/core/plan';
-import { clusterBySlug, sourceName } from '@/core/repo';
+import { clusterBySlug, sourceNameMap, nameFrom } from '@/core';
 import { sourceConfig } from '@/ingest/config';
 import { SaveControls } from '@/components/SaveControls';
 import { Section } from '@/components/Section';
@@ -21,7 +21,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const c = clusterBySlug(slug);
+  const c = await clusterBySlug(slug);
   if (c === null) return { title: 'Not found' };
   const where = c.landmark === null ? c.town.name : `${c.landmark.name}, ${c.town.name}`;
   const total = c.totalToMoveInMin;
@@ -36,8 +36,9 @@ export async function generateMetadata({
 
 export default async function PlacePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const c = clusterBySlug(slug);
+  const c = await clusterBySlug(slug);
   if (c === null) notFound();
+  const sourceName = nameFrom(await sourceNameMap());
 
   const head = headlineListing(c);
   const total = c.totalToMoveInMin;

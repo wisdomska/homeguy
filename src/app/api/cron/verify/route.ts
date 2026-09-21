@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { clustersFor } from '@/core/repo';
+import { clustersFor } from '@/core';
 import { reverify } from '@/ingest/verify';
 
 export const dynamic = 'force-dynamic';
@@ -26,7 +26,7 @@ export async function GET(request: Request) {
   const start = Number.isInteger(offset) && offset >= 0 ? offset : 0;
   const SLICE = 100;
 
-  const all = clustersFor([]);
+  const all = await clustersFor([]);
   const slice = all.slice(start, start + SLICE);
   const results = await reverify(slice);
 

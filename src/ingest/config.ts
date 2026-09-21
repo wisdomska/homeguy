@@ -96,9 +96,10 @@ export const SOURCE_CONFIG: SourceConfig[] = [
     name: 'Jiji',
     tier: 3,
     kind: 'crawl',
-    // Off in this deployment. Turning it on is a deliberate act that
-    // requires the robots check below to pass on every run.
-    enabled: false,
+    // On. robots.txt disallows only /test/, /admin/, /crm/ and
+    // /auth/facebook; the listing API this uses is permitted, and the
+    // check runs again on every pass regardless.
+    enabled: true,
     origin: 'https://jiji.com.gh',
     schedule: '0 2 * * *',
     mayStoreContact: false,
@@ -110,7 +111,11 @@ export const SOURCE_CONFIG: SourceConfig[] = [
     name: 'Tonaton',
     tier: 3,
     kind: 'crawl',
-    enabled: false,
+    // On, with the same robots position as Jiji. Worth knowing when
+    // reading coverage: Tonaton is Jiji's sibling and carries largely the
+    // same inventory, so it adds reach rather than volume. Clustering is
+    // what stops one room appearing as two.
+    enabled: true,
     origin: 'https://tonaton.com',
     schedule: '30 2 * * *',
     mayStoreContact: false,
