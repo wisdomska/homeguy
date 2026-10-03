@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { ingestPaste } from '@/ingest/adapters/userPaste';
 import { ME } from '@/core/copy';
 import { rateLimit } from '@/lib/rateLimit';
+import { db, hasDatabase } from '@/core/db';
+import { queueSubmission } from '@/ingest/submissions';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 20;
@@ -43,16 +45,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ status: 'rejected', message: ME.linkRejectedInvalid });
   }
 
-  let host = 'that page';
-  try {
-    host = new URL(outcome.listing.sourceUrl).hostname;
-  } catch {
-    host = 'the message you pasted';
+  // Held for a person to read before it can appear in search. It used to be
+  // parsed, acknowledged as "Queued" and then dropped on the floor.
+  if (!hasDatabase()) {
+    return NextResponse.json({ status: 'rejected', message: ME.linkNotStored }, { status: 503 });
   }
+  await queueSubmission(db(), 'user-paste', outcome.listing, input);
 
   return NextResponse.json({
     status: 'parsed',
-    message: ME.linkQueued(host),
+    message: ME.linkQueued,
     parsed: {
       unitType: outcome.listing.unitType,
       monthlyRent: outcome.listing.monthlyRent,

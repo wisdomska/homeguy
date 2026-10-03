@@ -85,8 +85,8 @@ export default function BotPage() {
       </ul>
 
       <p className={ui.caption}>
-        Would rather send us a feed than be crawled? That is our preference too — it is
-        cheaper for both of us and the data is better. <Link href="/me">Get in touch.</Link>
+        Would rather send us your listings than be crawled? That is our preference too — it is
+        cheaper for both of us and the data is better. <Link href="/post">List them directly.</Link>
       </p>
     </div>
   );

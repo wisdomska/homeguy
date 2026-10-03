@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 import { ME, TRUST } from '@/core/copy';
 import { track } from '@/lib/analytics';
@@ -170,6 +171,9 @@ export default function MePage() {
         <section className={ui.panel} id="paste">
           <h2 className={ui.overline}>{ME.addListing}</h2>
           <p className={ui.caption}>{ME.addListingSub}</p>
+          <Link href="/post" className={ui.btnTertiary}>
+            {ME.listYourOwn}
+          </Link>
           <label>
             <span className="sr-only">{ME.linkPlaceholder}</span>
             <textarea

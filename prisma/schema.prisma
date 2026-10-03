@@ -57,6 +57,12 @@ enum SourceKind {
   agent_direct
 }
 
+enum SubmissionStatus {
+  pending
+  approved
+  rejected
+}
+
 enum ReportStatus {
   open
   actioned
@@ -277,6 +283,25 @@ model Report {
 }
 
 /// A data-subject erasure request under Act 843 s.33, and what we did.
+/// A listing a person sent us (a paste, or an agent's own post), waiting for
+/// a human to read it before it can appear in search. Approving it runs it
+/// through the same persist path as everything else.
+model Submission {
+  id          String           @id @default(cuid())
+  sourceId    String
+  status      SubmissionStatus @default(pending)
+  /// The parsed RawListing, as JSON.
+  payload     Json
+  rawText     String           @db.Text
+  /// Held on the consent path; erasable on request (Act 843 s.33).
+  contactPhone String?
+  submittedAt DateTime         @default(now())
+  reviewedAt  DateTime?
+  outcomeNote String?          @db.Text
+
+  @@index([status, submittedAt])
+}
+
 model ErasureRequest {
   id          String    @id @default(cuid())
   subject     String

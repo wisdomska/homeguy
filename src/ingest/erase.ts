@@ -11,6 +11,9 @@
  * An erasure removes the person from a listing that may legitimately stay.
  */
 
+import type { Prisma, PrismaClient } from '@prisma/client';
+import { parseGhanaPhone } from './normalise';
+
 export interface ErasureRequest {
   /** The number or name the request is about. */
   subject: string;
@@ -52,4 +55,50 @@ export function eraseSubject(
     return l;
   });
   return { listings: next, affected };
+}
+
+/**
+ * Apply an erasure to everything we hold: live listings and anything still
+ * in the review queue. Records the request for the audit trail.
+ *
+ * A number can be written several ways ("024 123 4567", "+233241234567"),
+ * so the subject is matched in the stored form as well as as typed.
+ */
+export async function eraseFromDb(
+  db: PrismaClient,
+  subject: string,
+  note: string | null,
+  now = new Date(),
+): Promise<ErasureOutcome> {
+  const typed = subject.trim();
+  const phone = parseGhanaPhone(typed);
+  const phones = phone === null ? [typed] : [typed, phone];
+
+  const listings = await db.listing.updateMany({
+    where: {
+      OR: [
+        { agentPhone: { in: phones } },
+        { agentName: { equals: typed, mode: 'insensitive' } },
+      ],
+    },
+    data: { agentName: null, agentPhone: null },
+  });
+
+  const queued = await db.submission.findMany({
+    where: { contactPhone: { in: phones } },
+    select: { id: true, payload: true },
+  });
+  for (const q of queued) {
+    const payload = { ...(q.payload as Record<string, unknown>), agentName: null, agentPhone: null };
+    await db.submission.update({
+      where: { id: q.id },
+      data: { contactPhone: null, payload: payload as Prisma.InputJsonValue },
+    });
+  }
+
+  const affected = listings.count + queued.length;
+  await db.erasureRequest.create({
+    data: { subject: typed, note, requestedAt: now, completedAt: now, listingsAffected: affected },
+  });
+  return { subject: typed, listingsAffected: affected, completedAt: now };
 }

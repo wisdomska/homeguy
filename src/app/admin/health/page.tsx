@@ -1,5 +1,7 @@
 import { SOURCE_CONFIG } from '@/ingest/config';
-import { allRuns, canary, lastSuccessfulRun } from '@/ingest/health';
+import Link from 'next/link';
+import { allRuns, canaryFrom, loadRuns, type RunRecord } from '@/ingest/health';
+import { pendingCount } from '@/ingest/submissions';
 import { mergeLogEntries } from '@/ingest/cluster';
 import { queue } from '@/ingest/queue';
 import { eventCounts, zeroResultsByTown } from '@/lib/eventStore';
@@ -27,12 +29,18 @@ export const metadata = {
  * Access control: this route is behind Basic auth in middleware.ts.
  */
 export default async function HealthPage() {
-  const alerts = canary(SOURCE_CONFIG.map((s) => s.id));
+  // Runs and reports come from the database where there is one: this page
+  // and the ingest pass almost never share a serverless process.
+  const history: RunRecord[] = hasDatabase() ? await loadRuns(db()) : allRuns();
+  const alerts = canaryFrom(history, SOURCE_CONFIG.map((s) => s.id));
+  const lastSuccessfulRun = (id: string) =>
+    history.find((r) => r.sourceId === id && r.ok) ?? null;
   const counts = eventCounts();
   const zeros = zeroResultsByTown();
-  const runs = allRuns().slice(0, 20);
+  const runs = history.slice(0, 20);
   const merges = mergeLogEntries(20);
-  const reports = openReports();
+  const reports = await openReports();
+  const pending = hasDatabase() ? await pendingCount(db()) : 0;
   const regionCounts = await regionsWithCoverage();
   const total = await totalClusterCount();
 
@@ -51,6 +59,12 @@ export default async function HealthPage() {
   return (
     <div className={styles.wrap}>
       <h1 className={ui.h2}>Ingestion health</h1>
+      <p className={ui.body}>
+        <Link href="/admin/review">
+          Review queue: {pending} {pending === 1 ? 'submission' : 'submissions'} and{' '}
+          {reports.length} {reports.length === 1 ? 'report' : 'reports'} waiting
+        </Link>
+      </p>
 
       {alerts.length > 0 ? (
         <section className={styles.alert}>
@@ -261,7 +275,7 @@ export default async function HealthPage() {
       <section>
         <h2 className={ui.h3}>Runs</h2>
         {runs.length === 0 ? (
-          <p className={ui.caption}>No ingestion run has happened in this process.</p>
+          <p className={ui.caption}>No ingestion run has been recorded.</p>
         ) : (
           runs.map((r, i) => (
             <p key={i} className={`${ui.caption} num`}>

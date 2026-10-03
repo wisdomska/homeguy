@@ -389,13 +389,15 @@ export const ME = {
 
   addListing: 'Add a listing you found',
   addListingSub:
-    "Paste a link from Facebook, Jiji or a WhatsApp broadcast. We'll read it, check whether we already track the place under another agent, and add it to your results.",
+    "Paste a link from Facebook, Jiji or a WhatsApp broadcast, or the advert's text. A person checks it, then we add it to search and group it with the same place from other agents.",
+  listYourOwn: 'Agent or landlord? List your own room directly.',
   linkPlaceholder: 'Paste a link, or the whole message',
-  addLink: 'Add it to my search',
+  addLink: 'Send it in',
   linkAdded:
-    "Added. We keep the source link on the card, and we don't contact the agent on your behalf.",
-  linkQueued: (host: string) =>
-    `Queued. We'll fetch that one page from ${host}, parse it, and check whether we already track the place.`,
+    "We keep the source link on the card, and we don't contact the agent on your behalf.",
+  linkQueued:
+    'Got it. A person reads every listing sent in before it appears in search.',
+  linkNotStored: "We read that, but this copy of HomeGuy has nowhere to keep it yet, so it wasn't saved.",
   linkRejectedLogin:
     "That page needs a login, so we can't fetch it. Paste the text of the message instead and we'll read that.",
   linkRejectedBlocked:
@@ -444,4 +446,30 @@ export const CARD = {
   qualifierNoAdvance: 'per month · advance not stated',
   locationNotStated: (town: string) => `Location not stated · ${town}`,
   sourceCount: (n: number) => `${n} ${n === 1 ? 'source' : 'sources'}`,
+} as const;
+
+/* ---- /post: agents and landlords list directly (Tier 1) ---- */
+export const POST = {
+  title: 'List a room on HomeGuy',
+  intro:
+    'For agents and landlords. Paste the advert the way you would send it on WhatsApp. A person reads every listing before it appears in search, and renters contact you directly. HomeGuy takes no fee.',
+  messageLabel: 'The advert',
+  messageHint: 'Include the rent, the advance, the area and how to get there. Anything you leave out shows as "Not stated".',
+  townLabel: 'Town or area',
+  townPlaceholder: 'Choose one',
+  roleLabel: 'You are',
+  roleAgent: 'An agent',
+  roleLandlord: 'The landlord',
+  nameLabel: 'Your name',
+  phoneLabel: 'Phone number renters should call',
+  consent:
+    'I agree that HomeGuy may show my name and number on this listing. I can ask for them to be removed at any time.',
+  submit: 'Send for review',
+  sending: 'Sending…',
+  sent: "Thanks. A person will read it before it goes into search. If something is unclear we'll leave it out rather than guess.",
+  errorMissing: 'Add the advert, the town, your phone number and your agreement, then send it again.',
+  errorNoRent: 'We could not find a monthly rent in that. Write it as, for example, "GH₵ 800 per month".',
+  errorNotStored: "This copy of HomeGuy has nowhere to keep listings yet, so it wasn't saved.",
+  errorOffline: 'You look offline. Your text is still here; send it again when you are back on data.',
+  errorBusy: 'That is a lot of listings at once. Try again in a minute.',
 } as const;
