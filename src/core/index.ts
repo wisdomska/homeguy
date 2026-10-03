@@ -17,6 +17,7 @@
 
 import {
   dbClusterBySlug,
+  dbOldestClusters,
   dbClustersByIds,
   dbClustersFor,
   dbClustersMatchingPlace,
@@ -51,6 +52,12 @@ export async function clustersFor(townSlugs: string[]): Promise<ClusterView[]> {
 export async function clustersMatchingPlace(query: string): Promise<ClusterView[]> {
   if (!hasDatabase()) return [];
   return dbClustersMatchingPlace(query);
+}
+
+/** The least recently verified clusters. Empty with no database. */
+export async function oldestClusters(take = 20): Promise<ClusterView[]> {
+  if (!hasDatabase()) return [];
+  return dbOldestClusters(take);
 }
 
 export async function clusterBySlug(slug: string): Promise<ClusterView | null> {

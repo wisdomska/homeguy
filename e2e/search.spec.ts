@@ -85,7 +85,9 @@ test('the card holds its dimensions across missing-data states', async ({ page }
   await page.goto('/cards');
   const cards = page.getByTestId('result-card');
   const count = await cards.count();
-  expect(count).toBeGreaterThanOrEqual(8);
+  // Seven states built from real listings; the eighth is the loading
+  // skeleton, which is not a result card.
+  expect(count).toBeGreaterThanOrEqual(7);
 
   const widths = new Set<number>();
   for (let i = 0; i < count; i += 1) {

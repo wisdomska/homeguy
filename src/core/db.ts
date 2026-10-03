@@ -120,13 +120,20 @@ const INCLUDE = {
   listings: { where: { goneAt: null }, orderBy: { monthlyRent: 'asc' } },
 } as const;
 
-function loadClusters(where: object, take: number) {
+function loadClusters(where: object, take: number, order: 'asc' | 'desc' = 'desc') {
   return db().cluster.findMany({
     where,
     include: INCLUDE,
-    orderBy: { lastVerifiedAt: 'desc' },
+    orderBy: { lastVerifiedAt: order },
     take,
   });
+}
+
+/** The least recently verified live clusters: where staleness shows first. */
+export async function dbOldestClusters(take = 20): Promise<ClusterView[]> {
+  const now = new Date();
+  const rows = await loadClusters({ listings: { some: { goneAt: null } } }, take, 'asc');
+  return rows.map((r) => toView(r, now));
 }
 
 /* ---- queries ---------------------------------------------------------- */

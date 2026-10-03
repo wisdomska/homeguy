@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { ResultCard, ResultCardSkeleton } from '@/components/ResultCard';
 import { buildCard, type CardModel } from '@/core/cardModel';
-import { clustersFor, nameFrom, sourceNameMap } from '@/core';
+import { clustersFor, nameFrom, oldestClusters, sourceNameMap } from '@/core';
 import type { ClusterView } from '@/core/types';
 import ui from '@/components/ui.module.css';
 import styles from './cards.module.css';
@@ -42,7 +42,9 @@ export default async function CardsPage() {
   const clustered = find((c) => c.sourceCount > 1);
   const noPhoto = find((c) => c.thumbnailUrl === null);
   const noLandmark = find((c) => c.landmark === null);
-  const stale = find((c) => c.seenDaysAgo > 30);
+  // The sample above is the newest few hundred, so a stale cluster is never
+  // in it once the index is any size. Look for one where they actually are.
+  const stale = (await oldestClusters()).find((c) => c.seenDaysAgo > 30);
   const anyOne = all[0];
 
   const cases: Array<{ title: string; note: string; card: CardModel | null; over?: boolean }> = [

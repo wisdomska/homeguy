@@ -95,6 +95,27 @@ jobs:
   e2e:
     name: E2E and accessibility
     runs-on: ubuntu-latest
+    # The app never invents listings: with no database it shows none, and
+    # the suite was written against the fixture dataset. So it runs against
+    # a throwaway Postgres filled by scripts/seed-e2e.ts. (It used to
+    # prefer the Vercel preview, which has no database either, so it could
+    # never pass there.)
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: homeguy_e2e
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/homeguy_e2e
+      DATABASE_URL_UNPOOLED: postgresql://postgres:postgres@127.0.0.1:5432/homeguy_e2e
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -103,22 +124,12 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-
-      # Prefer the Vercel preview for this PR when one exists, so the tests
-      # run against the artefact that would ship. Falls back to a local
-      # build otherwise.
-      - name: Wait for the Vercel preview
-        if: github.event_name == 'pull_request'
-        id: preview
-        uses: patrickedqvist/wait-for-vercel-preview@v1.3.2
-        continue-on-error: true
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          max_timeout: 600
-
+      - name: Migrate and seed the test database
+        run: |
+          npx prisma migrate deploy
+          npx prisma db seed
+          npm run e2e:seed
       - name: Run Playwright
-        env:
-          PLAYWRIGHT_BASE_URL: ${{ steps.preview.outputs.url }}
         run: npm run e2e
 
       - uses: actions/upload-artifact@v4

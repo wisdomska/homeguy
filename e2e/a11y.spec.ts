@@ -25,6 +25,7 @@ const ROUTES = [
   '/rent/upper-east',
   '/rent/upper-east/bolgatanga',
   '/bot',
+  '/post',
 ];
 
 for (const route of ROUTES) {
