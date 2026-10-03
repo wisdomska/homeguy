@@ -35,10 +35,29 @@ export async function reverify(
   clusters: ClusterView[],
   options: { fetchImpl?: typeof fetch; now?: Date } = {},
 ): Promise<VerifyResult[]> {
+  return (await reverifyWithin(clusters, options)).results;
+}
+
+/**
+ * The same walk, but one that stops starting new clusters once `deadline`
+ * (epoch ms) has passed, and says how far it got.
+ *
+ * The 2s per-host interval means a slice of 100 clusters cannot finish
+ * inside a 60s serverless function, and a function that is killed mid-walk
+ * reports nothing at all. Stopping early and handing back the next offset
+ * keeps every run useful.
+ */
+export async function reverifyWithin(
+  clusters: ClusterView[],
+  options: { fetchImpl?: typeof fetch; now?: Date; deadline?: number } = {},
+): Promise<{ results: VerifyResult[]; clustersChecked: number }> {
   const now = options.now ?? new Date();
   const out: VerifyResult[] = [];
+  let clustersChecked = 0;
 
   for (const c of clusters) {
+    if (options.deadline !== undefined && Date.now() >= options.deadline) break;
+    clustersChecked += 1;
     for (const l of c.listings) {
       const cfg = sourceConfig(l.sourceId);
 
@@ -92,5 +111,5 @@ export async function reverify(
     }
   }
 
-  return out;
+  return { results: out, clustersChecked };
 }

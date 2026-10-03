@@ -1,9 +1,16 @@
 import { NextResponse } from 'next/server';
 import { clustersFor } from '@/core';
-import { reverify } from '@/ingest/verify';
+import { reverifyWithin } from '@/ingest/verify';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
+
+/**
+ * Stop starting new clusters this long after the request arrives, leaving
+ * room for the one in flight (two 15s request timeouts at most) before
+ * the platform kills the function at maxDuration.
+ */
+const BUDGET_MS = 25_000;
 
 /**
  * The rolling re-check. This is what makes "Seen 2 days ago" honest rather
@@ -21,6 +28,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
+  const deadline = Date.now() + BUDGET_MS;
   const url = new URL(request.url);
   const offset = Number(url.searchParams.get('offset'));
   const start = Number.isInteger(offset) && offset >= 0 ? offset : 0;
@@ -28,16 +36,17 @@ export async function GET(request: Request) {
 
   const all = await clustersFor([]);
   const slice = all.slice(start, start + SLICE);
-  const results = await reverify(slice);
+  const { results, clustersChecked } = await reverifyWithin(slice, { deadline });
+  const next = start + clustersChecked;
 
   return NextResponse.json({
     ok: true,
     checkedFrom: start,
-    clusters: slice.length,
+    clusters: clustersChecked,
     listings: results.length,
     live: results.filter((r) => r.status === 'live').length,
     gone: results.filter((r) => r.status === 'gone').length,
     skipped: results.filter((r) => r.status === 'skipped').length,
-    nextOffset: start + SLICE >= all.length ? 0 : start + SLICE,
+    nextOffset: next >= all.length ? 0 : next,
   });
 }

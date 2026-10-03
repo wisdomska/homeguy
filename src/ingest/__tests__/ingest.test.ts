@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { isAllowed, mayFetch, parseRobots, __clearRobotsCache } from '../robots';
-import { __resetFetcher, fetchPolitely, looksGated } from '../fetcher';
+import { __resetFetcher, fetchPolitely, looksChallenged, looksGated } from '../fetcher';
+import { reverifyWithin } from '../verify';
+import type { ClusterView } from '@/core/types';
 import {
   normaliseMeter,
   normaliseUnitType,
@@ -131,6 +133,32 @@ describe('the polite fetcher', () => {
     });
     expect(res.hardStopped).toBe(true);
     expect(calls).toBe(1);
+  });
+
+  it('treats a bot challenge as a hard stop whatever its status code', async () => {
+    let calls = 0;
+    const fetchImpl = async (url: RequestInfo | URL) => {
+      if (String(url).endsWith('/robots.txt')) {
+        return new Response('User-agent: *\nAllow: /', { status: 200 });
+      }
+      calls += 1;
+      // Tonaton serves its wall as a 405.
+      return new Response('<html><title>Human Verification</title></html>', { status: 405 });
+    };
+    const first = await fetchPolitely('https://example.test/a', { fetchImpl });
+    expect(first.refusedReason).toBe('challenged');
+    expect(first.hardStopped).toBe(true);
+
+    // The rest of the run costs nothing at that host.
+    const second = await fetchPolitely('https://example.test/b', { fetchImpl });
+    expect(second.refusedReason).toBe('hard_stopped');
+    expect(calls).toBe(1);
+  });
+
+  it('recognises the challenge pages the sources actually serve', () => {
+    expect(looksChallenged('<title>Just a moment...</title>')).toBe(true);
+    expect(looksChallenged('<title>Human Verification</title>')).toBe(true);
+    expect(looksChallenged('<h1>Server error</h1>')).toBe(false);
   });
 
   it('refuses a page behind a login or a CAPTCHA rather than parsing it', async () => {
@@ -509,5 +537,17 @@ describe('deletion on request', () => {
     // The listing itself survives; only the personal data goes.
     expect(listings[0]?.id).toBe('1');
     expect(listings[1]?.agentPhone).not.toBeNull();
+  });
+});
+
+/* ---- verification ---------------------------------------------------- */
+
+describe('verification', () => {
+  it('stops starting clusters at the deadline and says how far it got', async () => {
+    const clusters = [{ id: 'a', listings: [] }, { id: 'b', listings: [] }] as unknown as ClusterView[];
+    const done = await reverifyWithin(clusters, { deadline: Date.now() + 60_000 });
+    expect(done.clustersChecked).toBe(2);
+    const late = await reverifyWithin(clusters, { deadline: Date.now() - 1 });
+    expect(late.clustersChecked).toBe(0);
   });
 });

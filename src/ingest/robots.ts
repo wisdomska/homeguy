@@ -123,6 +123,7 @@ export async function robotsFor(
   try {
     const res = await fetchImpl(`${origin}/robots.txt`, {
       headers: { 'User-Agent': BOT_USER_AGENT },
+      signal: AbortSignal.timeout(15_000),
     });
     if (res.status === 200) {
       rules = parseRobots(await res.text());

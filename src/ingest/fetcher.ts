@@ -8,7 +8,9 @@
  *   - one request at a time per host, at least 2s apart (or the host's own
  *     Crawl-delay, whichever is longer)
  *   - exponential backoff on 429 and 503
- *   - a hard stop on 403: we do not retry past a refusal
+ *   - a hard stop on 403, and on a bot challenge whatever its status code
+ *     (Cloudflare's "Just a moment..." page, a "Human Verification" wall):
+ *     we do not retry past a refusal and we do not try to solve one
  *   - never follow a redirect into a denylisted host
  *   - never fetch anything behind a login, a paywall or a CAPTCHA
  */
@@ -26,6 +28,9 @@ export interface FetchResult {
   /** True when this host has hard-stopped us and is now blocked for the run. */
   hardStopped: boolean;
 }
+
+/** A host that has not answered in this long is not going to. */
+const REQUEST_TIMEOUT_MS = 15_000;
 
 const lastRequestAt = new Map<string, number>();
 const hostQueues = new Map<string, Promise<unknown>>();
@@ -104,7 +109,11 @@ export async function fetchPolitely(
 
       let res: Response;
       try {
-        res = await fetchImpl(url, { headers, redirect: 'follow' });
+        res = await fetchImpl(url, {
+          headers,
+          redirect: 'follow',
+          signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        });
       } catch {
         if (attempt === maxRetries) {
           return { ok: false, status: 0, url, body: null, refusedReason: 'network', hardStopped: false };
@@ -123,6 +132,16 @@ export async function fetchPolitely(
           refusedReason: 'redirect_to_denylisted',
           hardStopped: false,
         };
+      }
+
+      // A bot challenge is the host saying no, whatever status it arrives
+      // with: Jiji serves Cloudflare's interstitial as a 403, Tonaton its
+      // "Human Verification" page as a 405. Treated exactly like a 403, and
+      // stopped for the rest of the run, so a pass over hundreds of URLs on
+      // a host that is refusing us costs one request, not hundreds.
+      if (!res.ok && (await isChallenge(res))) {
+        hardStops.add(host);
+        return { ok: false, status: res.status, url, body: null, refusedReason: 'challenged', hardStopped: true };
       }
 
       // A hard stop. We do not argue with a 403.
@@ -201,6 +220,35 @@ const GATE_MARKERS = [
 export function looksGated(html: string): boolean {
   const head = html.slice(0, 8000).toLowerCase();
   return GATE_MARKERS.some((m) => head.includes(m));
+}
+
+const CHALLENGE_MARKERS = [
+  'just a moment...',
+  'cf-browser-verification',
+  'challenge-platform',
+  'human verification',
+  'verify you are human',
+  'attention required!',
+];
+
+/**
+ * Whether a refused response is a bot challenge rather than an ordinary
+ * error. Reads a clone, so the caller can still use the original.
+ */
+async function isChallenge(res: Response): Promise<boolean> {
+  if (res.headers.get('cf-mitigated') === 'challenge') return true;
+  let text: string;
+  try {
+    text = await res.clone().text();
+  } catch {
+    return false;
+  }
+  return looksChallenged(text);
+}
+
+export function looksChallenged(html: string): boolean {
+  const head = html.slice(0, 8000).toLowerCase();
+  return CHALLENGE_MARKERS.some((m) => head.includes(m));
 }
 
 export function __resetFetcher(): void {

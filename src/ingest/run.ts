@@ -102,6 +102,13 @@ export async function runSourceIngest(
     error = err instanceof Error ? err.message : String(err);
   }
 
+  // Refused before a single page came back is not a quiet hour, it is an
+  // outage. Reporting it as success is how this went unnoticed for weeks
+  // while both sources served a bot challenge to every pass.
+  if (error === null && pagesFetched === 0 && refusals.length > 0) {
+    error = `blocked:${refusals[0]}`;
+  }
+
   let persisted = empty;
   if (collected.length > 0) {
     persisted = await persistListings(db, collected, now);

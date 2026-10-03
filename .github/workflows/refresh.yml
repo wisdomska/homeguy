@@ -70,6 +70,12 @@ jobs:
           # day is a broken parser, not a quiet market. Silent parser rot is
           # the main way aggregators die.
           alerts=$(jq -r '.alerts // [] | length' /tmp/out.json 2>/dev/null || echo 0)
+          # A source refused on every page (robots.txt unreadable, a bot
+          # challenge) fetched nothing. Say so loudly rather than going green.
+          blocked=$(jq -r '[.sources[] | select(.error != null) | "\(.source): \(.error)"] | join(", ")' /tmp/out.json 2>/dev/null || echo "")
+          if [ -n "$blocked" ]; then
+            echo "::error title=Ingestion source failed::$blocked"
+          fi
           if [ "$alerts" != "0" ]; then
             echo "::warning title=Ingestion yield alert::$(jq -c '.alerts' /tmp/out.json)"
           else
