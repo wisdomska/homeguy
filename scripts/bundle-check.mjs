@@ -155,7 +155,7 @@ for (const c of checks) {
 
 lines.push('');
 lines.push(
-  'Listing photos are referenced from the source's own CDN at roughly 300px, not copied or served by us, so they do not count against this figure. Data saver suppresses them entirely.',
+  'Listing photos are referenced from the source\'s own CDN at roughly 300px, not copied or served by us, so they do not count against this figure. Data saver suppresses them entirely.',
 );
 
 const report = lines.join('\n');
