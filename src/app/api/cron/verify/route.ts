@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { clustersFor } from '@/core';
+import { db, hasDatabase } from '@/core/db';
+import { recordVerification } from '@/ingest/persist';
 import { reverifyWithin } from '@/ingest/verify';
 
 export const dynamic = 'force-dynamic';
@@ -38,6 +40,9 @@ export async function GET(request: Request) {
   const slice = all.slice(start, start + SLICE);
   const { results, clustersChecked } = await reverifyWithin(slice, { deadline });
   const next = start + clustersChecked;
+  const recorded = hasDatabase()
+    ? await recordVerification(db(), results)
+    : { markedLive: 0, markedGone: 0 };
 
   return NextResponse.json({
     ok: true,
@@ -47,6 +52,7 @@ export async function GET(request: Request) {
     live: results.filter((r) => r.status === 'live').length,
     gone: results.filter((r) => r.status === 'gone').length,
     skipped: results.filter((r) => r.status === 'skipped').length,
+    recorded,
     nextOffset: next >= all.length ? 0 : next,
   });
 }

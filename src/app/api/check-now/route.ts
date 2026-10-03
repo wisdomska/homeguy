@@ -1,10 +1,15 @@
 import { NextResponse } from 'next/server';
 import { clustersByIds } from '@/core';
-import { reverify } from '@/ingest/verify';
+import { reverifyWithin } from '@/ingest/verify';
+import { db, hasDatabase } from '@/core/db';
+import { recordVerification } from '@/ingest/persist';
 import { rateLimit } from '@/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
+
+/** Stop starting new checks after this, well inside maxDuration. */
+const BUDGET_MS = 12_000;
 
 /** Never more than the page in front of the user. */
 const MAX_PER_CALL = 20;
@@ -39,8 +44,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'bad_request' }, { status: 400 });
   }
 
+  const deadline = Date.now() + BUDGET_MS;
   const clusters = await clustersByIds(ids.slice(0, MAX_PER_CALL));
-  const results = await reverify(clusters);
+  const { results } = await reverifyWithin(clusters, { deadline });
+  if (hasDatabase()) await recordVerification(db(), results);
 
   return NextResponse.json({
     checked: results.length,

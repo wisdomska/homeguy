@@ -26,6 +26,7 @@ import { REGIONS } from '@/core/geo';
 import { sourceConfig } from './config';
 import { parseNeighbourhood } from './normalise';
 import type { RawListing } from './adapters/types';
+import type { VerifyResult } from './verify';
 
 export interface PersistResult {
   seen: number;
@@ -185,23 +186,23 @@ const TITLE_STOPWORDS = new Set([
   'real','ltd','limited','company','enterprise','ventures','homes','group',
 ]);
 
-function titleKey(title: string, townName: string): string[] {
+export function titleKey(title: string, townName: string): string[] {
   // Words from the town's own name are in every title from that town.
   const townWords = new Set(
-    townName.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').split(/s+/).filter(Boolean),
+    townName.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter(Boolean),
   );
   return [
     ...new Set(
       title
         .toLowerCase()
         .replace(/[^a-z0-9 ]+/g, ' ')
-        .split(/s+/)
+        .split(/\s+/)
         .filter(
           (w) =>
             w.length > 2 &&
             !TITLE_STOPWORDS.has(w) &&
             !townWords.has(w) &&
-            !/^d+$/.test(w),
+            !/^\d+$/.test(w),
         ),
     ),
   ];
@@ -429,6 +430,63 @@ export async function persistListings(
   }
 
   return result;
+}
+
+/**
+ * Write what a verification pass found.
+ *
+ * Without this the re-check was decorative: it fetched, counted and threw
+ * the answer away, so "Seen 2 days ago" never moved and nothing was ever
+ * marked gone. Only a definite answer is written. A skipped or failed check
+ * (a source that refused us, a timeout) changes nothing, because not being
+ * able to look is not evidence either way.
+ */
+export async function recordVerification(
+  db: PrismaClient,
+  results: VerifyResult[],
+): Promise<{ markedLive: number; markedGone: number }> {
+  let markedLive = 0;
+  let markedGone = 0;
+  const touched = new Map<string, Date>();
+  const goneIn = new Set<string>();
+
+  for (const r of results) {
+    if (r.status === 'live') {
+      const res = await db.listing.updateMany({
+        where: { id: r.listingId, goneAt: null },
+        data: { lastVerifiedAt: r.checkedAt },
+      });
+      if (res.count > 0) {
+        markedLive += 1;
+        const prev = touched.get(r.clusterId);
+        if (prev === undefined || prev < r.checkedAt) touched.set(r.clusterId, r.checkedAt);
+      }
+    } else if (r.status === 'gone') {
+      const res = await db.listing.updateMany({
+        where: { id: r.listingId, goneAt: null },
+        data: { goneAt: r.checkedAt },
+      });
+      if (res.count > 0) {
+        markedGone += 1;
+        goneIn.add(r.clusterId);
+        await db.listingEvent.create({
+          data: { listingId: r.listingId, clusterId: r.clusterId, kind: 'gone', at: r.checkedAt },
+        });
+      }
+    }
+  }
+
+  for (const [clusterId, at] of touched) {
+    await db.cluster.updateMany({
+      where: { id: clusterId, lastVerifiedAt: { lt: at } },
+      data: { lastVerifiedAt: at },
+    });
+  }
+  for (const clusterId of goneIn) {
+    await recomputeCluster(db, clusterId);
+  }
+
+  return { markedLive, markedGone };
 }
 
 export type { Prisma };
