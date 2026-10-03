@@ -551,3 +551,27 @@ describe('verification', () => {
     expect(late.clustersChecked).toBe(0);
   });
 });
+
+/* ---- paste, when the host challenges us ------------------------------ */
+
+describe('pasting a link to a host that challenges our fetcher', () => {
+  const challenged = async (url: RequestInfo | URL) => {
+    if (String(url).endsWith('/robots.txt')) {
+      return new Response('User-agent: *\nAllow: /', { status: 200 });
+    }
+    return new Response('<title>Just a moment...</title>', { status: 403 });
+  };
+
+  it('asks for the text rather than calling the link invalid', async () => {
+    const out = await ingestPaste('https://jiji.com.gh/a-room.html', { townSlug: null, fetchImpl: challenged });
+    expect(out).toEqual({ status: 'needs_text', reason: 'blocked' });
+  });
+
+  it('uses the text when it came with the link', async () => {
+    const out = await ingestPaste(
+      'https://jiji.com.gh/a-room.html Chamber and hall self contain at Ahodwo, GH₵ 800 per month',
+      { townSlug: null, fetchImpl: challenged },
+    );
+    expect(out.status).toBe('parsed');
+  });
+});

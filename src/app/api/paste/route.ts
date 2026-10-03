@@ -34,7 +34,10 @@ export async function POST(request: Request) {
   const outcome = await ingestPaste(input, { townSlug: null });
 
   if (outcome.status === 'needs_text') {
-    return NextResponse.json({ status: 'needs_text', message: ME.linkRejectedLogin });
+    return NextResponse.json({
+      status: 'needs_text',
+      message: outcome.reason === 'blocked' ? ME.linkRejectedBlocked : ME.linkRejectedLogin,
+    });
   }
   if (outcome.status === 'rejected') {
     return NextResponse.json({ status: 'rejected', message: ME.linkRejectedInvalid });

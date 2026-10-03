@@ -82,6 +82,17 @@ export async function ingestPaste(
   const res = await fetchPolitely(url, { fetchImpl: options.fetchImpl });
   if (!res.ok || res.body === null) {
     if (res.refusedReason === 'gated') return { status: 'needs_text', reason: 'login_required' };
+    // The host answers our fetcher with a bot challenge (Jiji and Tonaton
+    // both do). The person can still read the page; ask for its text.
+    if (res.refusedReason === 'challenged' || res.refusedReason === 'hard_stopped' || res.refusedReason === 'robots_unavailable') {
+      if (trimmed.length > 60) {
+        return {
+          status: 'parsed',
+          listing: fromFreeText(trimmed, url, options.townSlug, options.now ?? new Date()),
+        };
+      }
+      return { status: 'needs_text', reason: 'blocked' };
+    }
     return { status: 'rejected', reason: res.refusedReason ?? `http_${res.status}` };
   }
 

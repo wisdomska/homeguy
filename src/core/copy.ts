@@ -398,6 +398,8 @@ export const ME = {
     `Queued. We'll fetch that one page from ${host}, parse it, and check whether we already track the place.`,
   linkRejectedLogin:
     "That page needs a login, so we can't fetch it. Paste the text of the message instead and we'll read that.",
+  linkRejectedBlocked:
+    "That site won't let us fetch the page. Copy the advert's text from it and paste that here instead.",
   linkRejectedInvalid: "That doesn't look like a link or a listing message.",
 
   neverHeading: 'What we will never do',
