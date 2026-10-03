@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db, hasDatabase } from '@/core/db';
 import { enabledSources } from '@/ingest/config';
-import { canary } from '@/ingest/health';
+import { canaryFrom, loadRuns } from '@/ingest/health';
 import { runAllSources } from '@/ingest/run';
 
 export const dynamic = 'force-dynamic';
@@ -32,7 +32,7 @@ export async function GET(request: Request) {
 
   const started = Date.now();
   const results = await runAllSources(db(), { maxPages: 5 });
-  const alerts = canary(enabledSources().map((s) => s.id));
+  const alerts = canaryFrom(await loadRuns(db()), enabledSources().map((s) => s.id));
 
   const clusters = await db().cluster.count({ where: { listings: { some: { goneAt: null } } } });
   const withTotal = await db().cluster.count({

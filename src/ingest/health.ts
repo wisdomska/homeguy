@@ -7,7 +7,14 @@
  * still renders fine. The canary exists to make that loud.
  *
  * Alert rule: a source's yield dropping more than 50% day over day.
+ *
+ * Runs are kept in memory for the current process and, where there is a
+ * database, in the IngestRun table. On serverless every request may land on
+ * a fresh process, so memory alone meant the canary never had a yesterday to
+ * compare against and /admin/health always said no run had happened.
  */
+
+import type { PrismaClient } from '@prisma/client';
 
 export interface RunRecord {
   sourceId: string;
@@ -59,11 +66,21 @@ export const YIELD_DROP_ALERT_THRESHOLD = 0.5;
  * than half is an alert, not a note.
  */
 export function canary(sourceIds: string[], now = Date.now()): CanaryAlert[] {
+  return canaryFrom(runs, sourceIds, now);
+}
+
+/** The same rule over any run history, such as one read from the database. */
+export function canaryFrom(
+  history: RunRecord[],
+  sourceIds: string[],
+  now = Date.now(),
+): CanaryAlert[] {
   const alerts: CanaryAlert[] = [];
   const DAY = 86_400_000;
+  const newestFirst = [...history].sort((a, b) => b.finishedAt - a.finishedAt);
 
   for (const sourceId of sourceIds) {
-    const history = runsFor(sourceId).filter((r) => r.ok);
+    const history = newestFirst.filter((r) => r.sourceId === sourceId && r.ok);
     const today = history.find((r) => now - r.finishedAt < DAY);
     const yesterday = history.find(
       (r) => now - r.finishedAt >= DAY && now - r.finishedAt < 2 * DAY,
@@ -83,6 +100,43 @@ export function canary(sourceIds: string[], now = Date.now()): CanaryAlert[] {
   }
 
   return alerts;
+}
+
+/** Persist one run. Never throws: losing a log row must not fail a pass. */
+export async function saveRun(db: PrismaClient, r: RunRecord): Promise<void> {
+  try {
+    await db.ingestRun.create({
+      data: {
+        sourceId: r.sourceId,
+        startedAt: new Date(r.startedAt),
+        finishedAt: new Date(r.finishedAt),
+        yield: r.yield,
+        parseFailures: r.parseFailures,
+        robotsBlocked: r.robotsBlocked,
+        meanAgeAtIndexHours: r.meanAgeAtIndexHours,
+        ok: r.ok,
+        error: r.error,
+      },
+    });
+  } catch {
+    // The in-memory record still exists for this process.
+  }
+}
+
+/** The most recent runs, newest first. */
+export async function loadRuns(db: PrismaClient, limit = 200): Promise<RunRecord[]> {
+  const rows = await db.ingestRun.findMany({ orderBy: { finishedAt: 'desc' }, take: limit });
+  return rows.map((row) => ({
+    sourceId: row.sourceId,
+    startedAt: row.startedAt.getTime(),
+    finishedAt: row.finishedAt.getTime(),
+    yield: row.yield,
+    parseFailures: row.parseFailures,
+    robotsBlocked: row.robotsBlocked,
+    meanAgeAtIndexHours: row.meanAgeAtIndexHours,
+    ok: row.ok,
+    error: row.error,
+  }));
 }
 
 export function __clearRuns(): void {

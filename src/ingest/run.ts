@@ -17,7 +17,7 @@ import { enabledSources } from './config';
 import { fetchPolitely } from './fetcher';
 import { JIJI_API, TONATON_API, listingApiUrl, parseApiPage, type ApiSourceConfig } from './adapters/jijiApi';
 import { persistListings, type PersistResult } from './persist';
-import { recordRun } from './health';
+import { recordRun, saveRun, type RunRecord } from './health';
 import type { RawListing } from './adapters/types';
 
 const API_SOURCES: Record<string, ApiSourceConfig> = {
@@ -114,7 +114,7 @@ export async function runSourceIngest(
     persisted = await persistListings(db, collected, now);
   }
 
-  recordRun({
+  const run: RunRecord = {
     sourceId,
     startedAt,
     finishedAt: Date.now(),
@@ -124,7 +124,9 @@ export async function runSourceIngest(
     meanAgeAtIndexHours: null,
     ok: error === null,
     error,
-  });
+  };
+  recordRun(run);
+  await saveRun(db, run);
 
   return {
     sourceId,
