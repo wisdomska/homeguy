@@ -73,6 +73,42 @@ to Preview), `homeguy-production` (scoped to Production).
 
 ---
 
+## October 2026: where listings come from now
+
+**Jiji and Tonaton no longer serve us.** Both put a bot challenge in front
+of automated traffic: Jiji a Cloudflare "Just a moment..." page (a 403, on
+`robots.txt` too), Tonaton a "Human Verification" page (a 405). The fetcher
+treats either as a hard stop and nothing tries to get past it. Each hourly
+ingest run reports `blocked:<reason>` per source and the workflow raises an
+error annotation. Both sources stay enabled in `src/ingest/config.ts`, so
+ingestion resumes by itself if either host lets HomeGuyBot back in.
+
+**The channels that need nobody's permission:**
+
+- `/post`: agents and landlords list directly, with explicit consent to
+  show a name and number (Tier 1).
+- `/me` → "Add a listing you found": renters paste a link or the advert's
+  text (Tier 2). A link to a host that challenges us gets "paste the text
+  instead".
+
+Neither goes straight into search. Both land in the `Submission` table, and
+a person approves or rejects each one at **`/admin/review`** (Basic auth,
+same credentials as `/admin/health`). Approval runs it through
+`persistListings`, the same path a crawled listing takes. The same page
+holds the report queue (take down / dismiss) and the Act 843 erasure form.
+
+**Also fixed in the same pass:**
+
+- Verification wrote nothing back. `lastVerifiedAt` and `goneAt` now move.
+  It also stops at a time budget instead of being killed at 60s.
+- Reports and ingest runs lived in process memory, which on serverless
+  means they were lost between requests. They are in `Report` and
+  `IngestRun` now, so the canary and `/admin/health` actually see history.
+- Clustering split titles on the letter "s" (`/s+/` for `/\s+/`).
+- `npm run ingest:run` pointed at a file that did not exist.
+
+---
+
 ## Phases
 
 | Phase | State |
