@@ -9,10 +9,6 @@
   },
   "crons": [
     {
-      "path": "/api/cron/ingest",
-      "schedule": "0 2 * * *"
-    },
-    {
       "path": "/api/cron/verify",
       "schedule": "0 8 * * *"
     }

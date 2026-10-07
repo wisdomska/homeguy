@@ -7,7 +7,7 @@ name: Refresh listings
 # Actions runs scheduled workflows free on public repositories.
 #
 # Two separate jobs on purpose:
-#   ingest  — hourly, looks for listings that are new
+#   ingest  — manual only (paused), looks for listings that are new
 #   verify  — every 3 hours, walks a slice of the index and marks what has
 #             gone, which is what keeps "Seen 2 days ago" honest
 #
@@ -17,9 +17,10 @@ name: Refresh listings
 
 on:
   schedule:
-    # Hourly, at 17 past, to stay off the top-of-hour stampede that every
-    # other scheduled job on the platform joins.
-    - cron: '17 * * * *'
+    # The ingest pass no longer runs on a schedule. Jiji and Tonaton answer
+    # every automated request with a bot challenge, so each run fetched
+    # nothing. It can still be run by hand from the Actions tab
+    # (workflow_dispatch) to check whether either source has come back.
     # Verification walks a slice every 3 hours.
     - cron: '43 */3 * * *'
   workflow_dispatch:
@@ -40,7 +41,8 @@ concurrency:
 jobs:
   ingest:
     name: Look for new listings
-    if: github.event.schedule != '43 */3 * * *'
+    # Manual only; see the note on the schedule above.
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
