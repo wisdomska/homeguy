@@ -7,22 +7,19 @@ name: Refresh listings
 # Actions runs scheduled workflows free on public repositories.
 #
 # Two separate jobs on purpose:
-#   ingest  — manual only (paused), looks for listings that are new
-#   verify  — every 3 hours, walks a slice of the index and marks what has
-#             gone, which is what keeps "Seen 2 days ago" honest
+#   ingest  — looks for listings that are new
+#   verify  — walks a slice of the index and marks what has gone
+# Both are manual only for now; see the note under `on:`.
 #
 # Both are polite by construction: they call our own endpoints, which go
 # through src/ingest/fetcher.ts — robots.txt honoured on every run, one
 # request at a time per host, 2s apart, hard stop on 403.
 
 on:
-  schedule:
-    # The ingest pass no longer runs on a schedule. Jiji and Tonaton answer
-    # every automated request with a bot challenge, so each run fetched
-    # nothing. It can still be run by hand from the Actions tab
-    # (workflow_dispatch) to check whether either source has come back.
-    # Verification walks a slice every 3 hours.
-    - cron: '43 */3 * * *'
+  # No schedule. Both jobs are switched off: Jiji and Tonaton answer every
+  # automated request with a bot challenge, so ingest fetched nothing and
+  # verify could confirm nothing. Either can still be run by hand from the
+  # Actions tab (workflow_dispatch).
   workflow_dispatch:
     inputs:
       target:
@@ -41,7 +38,6 @@ concurrency:
 jobs:
   ingest:
     name: Look for new listings
-    # Manual only; see the note on the schedule above.
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -86,7 +82,7 @@ jobs:
 
   verify:
     name: Re-check listings we already hold
-    if: github.event.schedule == '43 */3 * * *' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
